@@ -169,4 +169,98 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 		AType::sReset();
 		VType::sReset();
 	}
+
+	TEST_CASE_TEMPLATE( "InsertOne[Copy]", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ) };
+		vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ) };
+
+		auto a = AType( 4 );
+		auto v = VType( 4 );
+
+		if ( T::reserved ) {
+			arr.reserve( 4 );
+			vec.reserve( 4 );
+		}
+
+		AType::sReset();
+		VType::sReset();
+
+		SUBCASE( "Begin" ) {
+			arr.insert( arr.begin(), a );
+			vec.insert( vec.begin(), v );
+
+			AV_WARN();
+			CHECK( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Middle" ) {
+			arr.insert( arr.end() - 1, a );
+			vec.insert( vec.end() - 1, v );
+
+			AV_WARN();
+			CHECK( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "End" ) {
+			arr.insert( arr.end(), a );
+			vec.insert( vec.end(), v );
+
+			AV_WARN();
+			CHECK( EnsureSame( arr, vec ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+
+	TEST_CASE_TEMPLATE( "InsertOne[Move]", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ) };
+		vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ) };
+
+		auto a = AType( 4 );
+		auto v = VType( 4 );
+
+		if ( T::reserved ) {
+			arr.reserve( 4 );
+			vec.reserve( 4 );
+		}
+
+		AType::sReset();
+		VType::sReset();
+
+		SUBCASE( "Begin" ) {
+			arr.insert( arr.begin(), std::move( a ) );
+			vec.insert( vec.begin(), std::move( v ) );
+
+			AV_WARN();
+			CHECK( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Middle" ) {
+			arr.insert( arr.end() - 1, std::move( a ) );
+			vec.insert( vec.end() - 1, std::move( v ) );
+
+			AV_WARN();
+			CHECK( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "End" ) {
+			arr.insert( arr.end(), std::move( a ) );
+			vec.insert( vec.end(), std::move( v ) );
+
+			AV_WARN();
+			CHECK( EnsureSame( arr, vec ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
 }
