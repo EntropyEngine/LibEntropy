@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="LibEntropy::Array&lt;*&gt;">
+    <DisplayString>{{ size={mSize} }}</DisplayString>
+    <Expand>
+      <Item Name="[size]">mSize</Item>
+      <Item Name="[capacity]">mCapacity</Item>
+      <ArrayItems>
+        <Size>mCapacity</Size>
+        <ValuePointer>mData</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+</AutoVisualizer>
