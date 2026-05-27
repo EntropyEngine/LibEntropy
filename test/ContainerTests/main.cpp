@@ -11,6 +11,7 @@ int main( int argc, char **argv )
 
 	doctest::Context context;
 
+	context.setOption( "no-path-filenames", true );
 	context.applyCommandLine( argc, argv );
 
 	int res = context.run();
