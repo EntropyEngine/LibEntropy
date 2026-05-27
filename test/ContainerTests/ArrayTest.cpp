@@ -115,6 +115,16 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 		WARN( AType::sNumMoveAssigns == VType::sNumMoveAssigns ); \
 	}
 
+#define AV_CHECK() \
+	{ \
+		CHECK( AType::sNumConstructors == VType::sNumConstructors ); \
+		CHECK( AType::sNumCopyConstructors == VType::sNumCopyConstructors ); \
+		CHECK( AType::sNumMoveConstructors == VType::sNumMoveConstructors ); \
+		CHECK( AType::sNumDestructors == VType::sNumDestructors ); \
+		CHECK( AType::sNumCopyAssigns == VType::sNumCopyAssigns ); \
+		CHECK( AType::sNumMoveAssigns == VType::sNumMoveAssigns ); \
+	}
+
 	bool EnsureSame( const auto &a, const auto &v )
 	{
 		if ( a.size() != v.size() ) return false;
@@ -257,6 +267,97 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			vec.insert( vec.end(), std::move( v ) );
 
 			AV_WARN();
+			CHECK( EnsureSame( arr, vec ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+
+	TEST_CASE_TEMPLATE( "InsertThree[CopyN]", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ) };
+		vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ) };
+
+		auto a = AType( 4 );
+		auto v = VType( 4 );
+
+		if ( T::reserved ) {
+			arr.reserve( 6 );
+			vec.reserve( 6 );
+		}
+
+		AType::sReset();
+		VType::sReset();
+
+		SUBCASE( "Begin" ) {
+			arr.insert( arr.begin(), 3, a );
+			vec.insert( vec.begin(), 3, v );
+
+			AV_WARN();
+			CHECK( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Middle" ) {
+			arr.insert( arr.end() - 1, 3, a );
+			vec.insert( vec.end() - 1, 3, v );
+
+			AV_WARN();
+			CHECK( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "End" ) {
+			arr.insert( arr.end(), 3, a );
+			vec.insert( vec.end(), 3, v );
+
+			AV_WARN();
+			CHECK( EnsureSame( arr, vec ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+
+	TEST_CASE_TEMPLATE( "InsertThree[InitList]", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ) };
+		vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ) };
+
+		if ( T::reserved ) {
+			arr.reserve( 6 );
+			vec.reserve( 6 );
+		}
+
+		AType::sReset();
+		VType::sReset();
+
+		SUBCASE( "Begin" ) {
+			arr.insert( arr.begin(), { AType( 4 ), AType( 5 ), AType( 6 ) } );
+			vec.insert( vec.begin(), { VType( 4 ), VType( 5 ), VType( 6 ) } );
+
+			AV_CHECK();
+			CHECK( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Middle" ) {
+			arr.insert( arr.end() - 1, { AType( 4 ), AType( 5 ), AType( 6 ) } );
+			vec.insert( vec.end() - 1, { VType( 4 ), VType( 5 ), VType( 6 ) } );
+
+			AV_CHECK();
+			CHECK( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "End" ) {
+			arr.insert( arr.end(), { AType( 4 ), AType( 5 ), AType( 6 ) } );
+			vec.insert( vec.end(), { VType( 4 ), VType( 5 ), VType( 6 ) } );
+
+			AV_CHECK();
 			CHECK( EnsureSame( arr, vec ) );
 		}
 
