@@ -917,7 +917,32 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 		VType::sReset();
 	}
 
-	// Pop Back
+	TEST_CASE_TEMPLATE( "PopBack", T, RESERVED_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ), AType( 4 ) };
+		vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ), VType( 4 ) };
+
+		AType::sReset();
+		VType::sReset();
+
+		int i = GENERATE( 1, 2, 3, 4 );
+
+		SUBCASE( doctest::toString( i ) ) {
+			for ( int j = 0; j < i; ++j ) {
+				arr.pop_back();
+				vec.pop_back();
+			}
+
+			AV_WARN();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
 
 	// Clear
 
