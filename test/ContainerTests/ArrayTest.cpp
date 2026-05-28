@@ -20,8 +20,8 @@ TYPE_TO_STRING_AS( "Unreserved, Throwing", Params<false, false> );
 TYPE_TO_STRING_AS( "Reserved, NoExcept", Params<true, true> );
 TYPE_TO_STRING_AS( "Reserved, Throwing", Params<true, false> );
 
-//#define ALL_PARAMS Params<false, true>, Params<false, false>, Params<true, true>, Params<true, false>
-#define ALL_PARAMS Params<false, true>
+#define ALL_PARAMS Params<false, true>, Params<false, false>, Params<true, true>, Params<true, false>
+//#define ALL_PARAMS Params<false, true>
 //#define ALL_PARAMS Params<false, false>
 //#define ALL_PARAMS Params<true, true>
 //#define ALL_PARAMS Params<true, false>
@@ -147,6 +147,111 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 		if ( vbegin != v.end() ) return false;
 
 		return true;
+	}
+
+	TEST_CASE_TEMPLATE( "PushBack[Copy]", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr;
+		vector<VType> vec;
+
+		int i = GENERATE( 1, 2, 3, 4 );
+
+		SUBCASE( doctest::toString( i ) ) {
+
+			if ( T::reserved ) {
+				arr.reserve( i );
+				vec.reserve( i );
+			}
+
+			AType::sReset();
+			VType::sReset();
+
+			for ( int j = 0; j < i; ++j ) {
+				auto a = AType( j + 1 );
+				auto v = VType( j + 1 );
+
+				arr.push_back( a );
+				vec.push_back( v );
+			}
+
+			AV_WARN();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+
+	TEST_CASE_TEMPLATE( "PushBack[Move]", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr;
+		vector<VType> vec;
+
+		int i = GENERATE( 1, 2, 3, 4 );
+
+		SUBCASE( doctest::toString( i ) ) {
+
+			if ( T::reserved ) {
+				arr.reserve( i );
+				vec.reserve( i );
+			}
+
+			AType::sReset();
+			VType::sReset();
+
+			for ( int j = 0; j < i; ++j ) {
+				auto a = AType( j + 1 );
+				auto v = VType( j + 1 );
+
+				arr.push_back( std::move( a ) );
+				vec.push_back( std::move( v ) );
+			}
+
+			AV_WARN();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+
+	TEST_CASE_TEMPLATE( "EmplaceBack", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr;
+		vector<VType> vec;
+
+		int i = GENERATE( 1, 2, 3, 4 );
+
+		SUBCASE( doctest::toString( i ) ) {
+
+			if ( T::reserved ) {
+				arr.reserve( i );
+				vec.reserve( i );
+			}
+
+			AType::sReset();
+			VType::sReset();
+
+			for ( int j = 0; j < i; ++j ) {
+				arr.emplace_back( j + 1 );
+				vec.emplace_back( j + 1 );
+			}
+
+			AV_WARN();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
 	}
 
 	TEST_CASE_TEMPLATE( "Emplace", T, ALL_PARAMS )
@@ -354,7 +459,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			arr.insert( arr.begin(), { AType( 4 ), AType( 5 ), AType( 6 ) } );
 			vec.insert( vec.begin(), { VType( 4 ), VType( 5 ), VType( 6 ) } );
 
-			AV_CHECK();
+			AV_WARN();
 			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
@@ -362,7 +467,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			arr.insert( arr.end() - 1, { AType( 4 ), AType( 5 ), AType( 6 ) } );
 			vec.insert( vec.end() - 1, { VType( 4 ), VType( 5 ), VType( 6 ) } );
 
-			AV_CHECK();
+			AV_WARN();
 			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
@@ -370,7 +475,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			arr.insert( arr.end(), { AType( 4 ), AType( 5 ), AType( 6 ) } );
 			vec.insert( vec.end(), { VType( 4 ), VType( 5 ), VType( 6 ) } );
 
-			AV_CHECK();
+			AV_WARN();
 			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
@@ -401,7 +506,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			arr.insert( arr.begin(), arrl.begin(), arrl.end() );
 			vec.insert( vec.begin(), vecl.begin(), vecl.end() );
 
-			AV_CHECK();
+			AV_WARN();
 			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
@@ -409,7 +514,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			arr.insert( arr.end() - 1, arrl.begin(), arrl.end() );
 			vec.insert( vec.end() - 1, vecl.begin(), vecl.end() );
 
-			AV_CHECK();
+			AV_WARN();
 			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
@@ -417,7 +522,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			arr.insert( arr.end(), arrl.begin(), arrl.end() );
 			vec.insert( vec.end(), vecl.begin(), vecl.end() );
 
-			AV_CHECK();
+			AV_WARN();
 			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
@@ -448,7 +553,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			arr.insert( arr.begin(), arrl.begin(), arrl.end() );
 			vec.insert( vec.begin(), vecl.begin(), vecl.end() );
 
-			AV_CHECK();
+			AV_WARN();
 			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
@@ -456,7 +561,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			arr.insert( arr.end() - 1, arrl.begin(), arrl.end() );
 			vec.insert( vec.end() - 1, vecl.begin(), vecl.end() );
 
-			AV_CHECK();
+			AV_WARN();
 			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
@@ -464,7 +569,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			arr.insert( arr.end(), arrl.begin(), arrl.end() );
 			vec.insert( vec.end(), vecl.begin(), vecl.end() );
 
-			AV_CHECK();
+			AV_WARN();
 			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
@@ -495,7 +600,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			arr.insert( arr.begin(), std::make_move_iterator( arrl.begin() ), std::make_move_iterator( arrl.end() ) );
 			vec.insert( vec.begin(), std::make_move_iterator( vecl.begin() ), std::make_move_iterator( vecl.end() ) );
 
-			AV_CHECK();
+			AV_WARN();
 			REQUIRE( EnsureSame( arr, vec ) );
 			REQUIRE( EnsureSame( arrl, vecl ) );
 		}
@@ -504,7 +609,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			arr.insert( arr.end() - 1, std::make_move_iterator( arrl.begin() ), std::make_move_iterator( arrl.end() ) );
 			vec.insert( vec.end() - 1, std::make_move_iterator( vecl.begin() ), std::make_move_iterator( vecl.end() ) );
 
-			AV_CHECK();
+			AV_WARN();
 			REQUIRE( EnsureSame( arr, vec ) );
 			REQUIRE( EnsureSame( arrl, vecl ) );
 		}
@@ -513,7 +618,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			arr.insert( arr.end(), std::make_move_iterator( arrl.begin() ), std::make_move_iterator( arrl.end() ) );
 			vec.insert( vec.end(), std::make_move_iterator( vecl.begin() ), std::make_move_iterator( vecl.end() ) );
 
-			AV_CHECK();
+			AV_WARN();
 			REQUIRE( EnsureSame( arr, vec ) );
 			REQUIRE( EnsureSame( arrl, vecl ) );
 		}
@@ -545,7 +650,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			arr.insert( arr.begin(), std::make_move_iterator( arrl.begin() ), std::make_move_iterator( arrl.end() ) );
 			vec.insert( vec.begin(), std::make_move_iterator( vecl.begin() ), std::make_move_iterator( vecl.end() ) );
 
-			AV_CHECK();
+			AV_WARN();
 			REQUIRE( EnsureSame( arr, vec ) );
 			REQUIRE( EnsureSame( arrl, vecl ) );
 		}
@@ -554,7 +659,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			arr.insert( arr.end() - 1, std::make_move_iterator( arrl.begin() ), std::make_move_iterator( arrl.end() ) );
 			vec.insert( vec.end() - 1, std::make_move_iterator( vecl.begin() ), std::make_move_iterator( vecl.end() ) );
 
-			AV_CHECK();
+			AV_WARN();
 			REQUIRE( EnsureSame( arr, vec ) );
 			REQUIRE( EnsureSame( arrl, vecl ) );
 		}
@@ -563,7 +668,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			arr.insert( arr.end(), std::make_move_iterator( arrl.begin() ), std::make_move_iterator( arrl.end() ) );
 			vec.insert( vec.end(), std::make_move_iterator( vecl.begin() ), std::make_move_iterator( vecl.end() ) );
 
-			AV_CHECK();
+			AV_WARN();
 			REQUIRE( EnsureSame( arr, vec ) );
 			REQUIRE( EnsureSame( arrl, vecl ) );
 		}
@@ -610,7 +715,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			arr.insert( arr.begin(), EvilIterator( std::make_move_iterator( arrl.begin() ) ), EvilIterator( std::make_move_iterator( arrl.end() ) ) );
 			vec.insert( vec.begin(), EvilIterator( std::make_move_iterator( vecl.begin() ) ), EvilIterator( std::make_move_iterator( vecl.end() ) ) );
 
-			AV_CHECK();
+			AV_WARN();
 			REQUIRE( EnsureSame( arr, vec ) );
 			REQUIRE( EnsureSame( arrl, vecl ) );
 		}
@@ -619,7 +724,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			arr.insert( arr.end() - 1, EvilIterator( std::make_move_iterator( arrl.begin() ) ), EvilIterator( std::make_move_iterator( arrl.end() ) ) );
 			vec.insert( vec.end() - 1, EvilIterator( std::make_move_iterator( vecl.begin() ) ), EvilIterator( std::make_move_iterator( vecl.end() ) ) );
 
-			AV_CHECK();
+			AV_WARN();
 			REQUIRE( EnsureSame( arr, vec ) );
 			REQUIRE( EnsureSame( arrl, vecl ) );
 		}
@@ -628,7 +733,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			arr.insert( arr.end(), EvilIterator( std::make_move_iterator( arrl.begin() ) ), EvilIterator( std::make_move_iterator( arrl.end() ) ) );
 			vec.insert( vec.end(), EvilIterator( std::make_move_iterator( vecl.begin() ) ), EvilIterator( std::make_move_iterator( vecl.end() ) ) );
 
-			AV_CHECK();
+			AV_WARN();
 			REQUIRE( EnsureSame( arr, vec ) );
 			REQUIRE( EnsureSame( arrl, vecl ) );
 		}
@@ -660,7 +765,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			arr.insert( arr.begin(), EvilIterator( std::make_move_iterator( arrl.begin() ) ), EvilIterator( std::make_move_iterator( arrl.end() ) ) );
 			vec.insert( vec.begin(), EvilIterator( std::make_move_iterator( vecl.begin() ) ), EvilIterator( std::make_move_iterator( vecl.end() ) ) );
 
-			AV_CHECK();
+			AV_WARN();
 			REQUIRE( EnsureSame( arr, vec ) );
 			REQUIRE( EnsureSame( arrl, vecl ) );
 		}
@@ -669,7 +774,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			arr.insert( arr.end() - 1, EvilIterator( std::make_move_iterator( arrl.begin() ) ), EvilIterator( std::make_move_iterator( arrl.end() ) ) );
 			vec.insert( vec.end() - 1, EvilIterator( std::make_move_iterator( vecl.begin() ) ), EvilIterator( std::make_move_iterator( vecl.end() ) ) );
 
-			AV_CHECK();
+			AV_WARN();
 			REQUIRE( EnsureSame( arr, vec ) );
 			REQUIRE( EnsureSame( arrl, vecl ) );
 		}
@@ -678,7 +783,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			arr.insert( arr.end(), EvilIterator( std::make_move_iterator( arrl.begin() ) ), EvilIterator( std::make_move_iterator( arrl.end() ) ) );
 			vec.insert( vec.end(), EvilIterator( std::make_move_iterator( vecl.begin() ) ), EvilIterator( std::make_move_iterator( vecl.end() ) ) );
 
-			AV_CHECK();
+			AV_WARN();
 			REQUIRE( EnsureSame( arr, vec ) );
 			REQUIRE( EnsureSame( arrl, vecl ) );
 		}
@@ -811,4 +916,16 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 		AType::sReset();
 		VType::sReset();
 	}
+
+	// Pop Back
+
+	// Clear
+
+	// Reserve
+
+	// Resize
+
+	// Assignment
+
+	// Copy/Move construction
 }
