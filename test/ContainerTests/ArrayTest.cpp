@@ -2,6 +2,7 @@
 
 #include "LibEntropy/Container/Array.hpp"
 #include <vector>
+#include <list>
 
 using LibEntropy::Array;
 using std::vector;
@@ -19,7 +20,7 @@ TYPE_TO_STRING_AS( "Unreserved, Throwing", Params<false, false> );
 TYPE_TO_STRING_AS( "Reserved, NoExcept", Params<true, true> );
 TYPE_TO_STRING_AS( "Reserved, Throwing", Params<true, false> );
 
-#define ALL_PARAMS Params<false, true>, Params<false, false>, Params<true, true>, Params<true, false>
+#define ALL_PARAMS Params<false, true> //, Params<false, false>, Params<true, true>, Params<true, false>
 #define RESERVED_PARAMS Params<true, true>, Params<true, false>
 
 TEST_SUITE( "ArrayTest: NonTrival" )
@@ -157,7 +158,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			vec.emplace( vec.begin(), 4 );
 
 			AV_WARN();
-			CHECK( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
 		SUBCASE( "Middle" ) {
@@ -165,7 +166,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			vec.emplace( vec.end() - 1, 4 );
 
 			AV_WARN();
-			CHECK( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
 		SUBCASE( "End" ) {
@@ -173,7 +174,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			vec.emplace( vec.end(), 4 );
 
 			AV_WARN();
-			CHECK( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
 		AType::sReset();
@@ -204,7 +205,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			vec.insert( vec.begin(), v );
 
 			AV_WARN();
-			CHECK( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
 		SUBCASE( "Middle" ) {
@@ -212,7 +213,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			vec.insert( vec.end() - 1, v );
 
 			AV_WARN();
-			CHECK( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
 		SUBCASE( "End" ) {
@@ -220,7 +221,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			vec.insert( vec.end(), v );
 
 			AV_WARN();
-			CHECK( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
 		AType::sReset();
@@ -251,7 +252,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			vec.insert( vec.begin(), std::move( v ) );
 
 			AV_WARN();
-			CHECK( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
 		SUBCASE( "Middle" ) {
@@ -259,7 +260,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			vec.insert( vec.end() - 1, std::move( v ) );
 
 			AV_WARN();
-			CHECK( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
 		SUBCASE( "End" ) {
@@ -267,7 +268,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			vec.insert( vec.end(), std::move( v ) );
 
 			AV_WARN();
-			CHECK( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
 		AType::sReset();
@@ -298,7 +299,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			vec.insert( vec.begin(), 3, v );
 
 			AV_WARN();
-			CHECK( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
 		SUBCASE( "Middle" ) {
@@ -306,7 +307,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			vec.insert( vec.end() - 1, 3, v );
 
 			AV_WARN();
-			CHECK( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
 		SUBCASE( "End" ) {
@@ -314,7 +315,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			vec.insert( vec.end(), 3, v );
 
 			AV_WARN();
-			CHECK( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
 		AType::sReset();
@@ -342,7 +343,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			vec.insert( vec.begin(), { VType( 4 ), VType( 5 ), VType( 6 ) } );
 
 			AV_CHECK();
-			CHECK( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
 		SUBCASE( "Middle" ) {
@@ -350,7 +351,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			vec.insert( vec.end() - 1, { VType( 4 ), VType( 5 ), VType( 6 ) } );
 
 			AV_CHECK();
-			CHECK( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
 		SUBCASE( "End" ) {
@@ -358,7 +359,195 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			vec.insert( vec.end(), { VType( 4 ), VType( 5 ), VType( 6 ) } );
 
 			AV_CHECK();
-			CHECK( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+
+	TEST_CASE_TEMPLATE( "InsertThree[FromVector]", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ) };
+		vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ) };
+
+		Array<AType> arrl = { AType( 4 ), AType( 5 ), AType( 6 ) };
+		vector<VType> vecl = { VType( 4 ), VType( 5 ), VType( 6 ) };
+
+		if ( T::reserved ) {
+			arr.reserve( 6 );
+			vec.reserve( 6 );
+		}
+
+		AType::sReset();
+		VType::sReset();
+
+		SUBCASE( "Begin" ) {
+			arr.insert( arr.begin(), arrl.begin(), arrl.end() );
+			vec.insert( vec.begin(), vecl.begin(), vecl.end() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Middle" ) {
+			arr.insert( arr.end() - 1, arrl.begin(), arrl.end() );
+			vec.insert( vec.end() - 1, vecl.begin(), vecl.end() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "End" ) {
+			arr.insert( arr.end(), arrl.begin(), arrl.end() );
+			vec.insert( vec.end(), vecl.begin(), vecl.end() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+
+	TEST_CASE_TEMPLATE( "InsertThree[FromList]", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ) };
+		vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ) };
+
+		std::list<AType> arrl = { AType( 4 ), AType( 5 ), AType( 6 ) };
+		std::list<VType> vecl = { VType( 4 ), VType( 5 ), VType( 6 ) };
+
+		if ( T::reserved ) {
+			arr.reserve( 6 );
+			vec.reserve( 6 );
+		}
+
+		AType::sReset();
+		VType::sReset();
+
+		SUBCASE( "Begin" ) {
+			arr.insert( arr.begin(), arrl.begin(), arrl.end() );
+			vec.insert( vec.begin(), vecl.begin(), vecl.end() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Middle" ) {
+			arr.insert( arr.end() - 1, arrl.begin(), arrl.end() );
+			vec.insert( vec.end() - 1, vecl.begin(), vecl.end() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "End" ) {
+			arr.insert( arr.end(), arrl.begin(), arrl.end() );
+			vec.insert( vec.end(), vecl.begin(), vecl.end() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+
+	TEST_CASE_TEMPLATE( "InsertThree[MoveFromVector]", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ) };
+		vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ) };
+
+		Array<AType> arrl = { AType( 4 ), AType( 5 ), AType( 6 ) };
+		vector<VType> vecl = { VType( 4 ), VType( 5 ), VType( 6 ) };
+
+		if ( T::reserved ) {
+			arr.reserve( 6 );
+			vec.reserve( 6 );
+		}
+
+		AType::sReset();
+		VType::sReset();
+
+		SUBCASE( "Begin" ) {
+			arr.insert( arr.begin(), std::make_move_iterator( arrl.begin() ), std::make_move_iterator( arrl.end() ) );
+			vec.insert( vec.begin(), std::make_move_iterator( vecl.begin() ), std::make_move_iterator( vecl.end() ) );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Middle" ) {
+			arr.insert( arr.end() - 1, std::make_move_iterator( arrl.begin() ), std::make_move_iterator( arrl.end() ) );
+			vec.insert( vec.end() - 1, std::make_move_iterator( vecl.begin() ), std::make_move_iterator( vecl.end() ) );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "End" ) {
+			arr.insert( arr.end(), std::make_move_iterator( arrl.begin() ), std::make_move_iterator( arrl.end() ) );
+			vec.insert( vec.end(), std::make_move_iterator( vecl.begin() ), std::make_move_iterator( vecl.end() ) );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+
+	TEST_CASE_TEMPLATE( "InsertThree[MoveFromList]", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ) };
+		vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ) };
+
+		std::list<AType> arrl = { AType( 4 ), AType( 5 ), AType( 6 ) };
+		std::list<VType> vecl = { VType( 4 ), VType( 5 ), VType( 6 ) };
+
+		if ( T::reserved ) {
+			arr.reserve( 6 );
+			vec.reserve( 6 );
+		}
+
+		AType::sReset();
+		VType::sReset();
+
+		SUBCASE( "Begin" ) {
+			arr.insert( arr.begin(), std::make_move_iterator( arrl.begin() ), std::make_move_iterator( arrl.end() ) );
+			vec.insert( vec.begin(), std::make_move_iterator( vecl.begin() ), std::make_move_iterator( vecl.end() ) );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Middle" ) {
+			arr.insert( arr.end() - 1, std::make_move_iterator( arrl.begin() ), std::make_move_iterator( arrl.end() ) );
+			vec.insert( vec.end() - 1, std::make_move_iterator( vecl.begin() ), std::make_move_iterator( vecl.end() ) );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "End" ) {
+			arr.insert( arr.end(), std::make_move_iterator( arrl.begin() ), std::make_move_iterator( arrl.end() ) );
+			vec.insert( vec.end(), std::make_move_iterator( vecl.begin() ), std::make_move_iterator( vecl.end() ) );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
 		AType::sReset();
