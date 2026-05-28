@@ -20,7 +20,13 @@ TYPE_TO_STRING_AS( "Unreserved, Throwing", Params<false, false> );
 TYPE_TO_STRING_AS( "Reserved, NoExcept", Params<true, true> );
 TYPE_TO_STRING_AS( "Reserved, Throwing", Params<true, false> );
 
-#define ALL_PARAMS Params<false, true> //, Params<false, false>, Params<true, true>, Params<true, false>
+//#define ALL_PARAMS Params<false, true>, Params<false, false>, Params<true, true>, Params<true, false>
+
+#define ALL_PARAMS Params<false, true>
+//#define ALL_PARAMS Params<false, false>
+//#define ALL_PARAMS Params<true, true>
+//#define ALL_PARAMS Params<true, false>
+
 #define RESERVED_PARAMS Params<true, true>, Params<true, false>
 
 TEST_SUITE( "ArrayTest: NonTrival" )
@@ -130,9 +136,15 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 	{
 		if ( a.size() != v.size() ) return false;
 
-		for ( int i = 0; i < a.size(); ++i ) {
-			if ( a[i].Value() != v[i].Value() ) return false;
+		auto abegin = a.begin();
+		auto vbegin = v.begin();
+
+		for ( ; abegin != a.end(); ++abegin, ++vbegin ) {
+			if ( abegin->Value() != vbegin->Value() ) return false;
 		}
+
+		if ( abegin != a.end() ) return false;
+		if ( vbegin != v.end() ) return false;
 
 		return true;
 	}
@@ -485,6 +497,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 
 			AV_CHECK();
 			REQUIRE( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arrl, vecl ) );
 		}
 
 		SUBCASE( "Middle" ) {
@@ -493,6 +506,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 
 			AV_CHECK();
 			REQUIRE( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arrl, vecl ) );
 		}
 
 		SUBCASE( "End" ) {
@@ -501,6 +515,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 
 			AV_CHECK();
 			REQUIRE( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arrl, vecl ) );
 		}
 
 		AType::sReset();
@@ -532,6 +547,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 
 			AV_CHECK();
 			REQUIRE( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arrl, vecl ) );
 		}
 
 		SUBCASE( "Middle" ) {
@@ -540,6 +556,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 
 			AV_CHECK();
 			REQUIRE( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arrl, vecl ) );
 		}
 
 		SUBCASE( "End" ) {
@@ -548,6 +565,72 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 
 			AV_CHECK();
 			REQUIRE( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arrl, vecl ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+
+	template<class Iter>
+	class EvilIterator : public Iter
+	{
+	public:
+		using iterator_category = std::input_iterator_tag;
+		using iterator_concept  = std::input_iterator_tag;
+
+		using value_type = typename Iter::value_type;
+		using difference_type = typename Iter::difference_type;
+		using pointer = typename Iter::pointer;
+		using reference = typename Iter::reference;
+
+		EvilIterator( Iter inIter ) : Iter( inIter ) {}
+	};
+
+	TEST_CASE_TEMPLATE( "InsertThree[MoveFromVectorInput]", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ) };
+		vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ) };
+
+		Array<AType> arrl = { AType( 4 ), AType( 5 ), AType( 6 ) };
+		vector<VType> vecl = { VType( 4 ), VType( 5 ), VType( 6 ) };
+
+		if ( T::reserved ) {
+			arr.reserve( 6 );
+			vec.reserve( 6 );
+		}
+
+		AType::sReset();
+		VType::sReset();
+
+		SUBCASE( "Begin" ) {
+			arr.insert( arr.begin(), EvilIterator( std::make_move_iterator( arrl.begin() ) ), EvilIterator( std::make_move_iterator( arrl.end() ) ) );
+			vec.insert( vec.begin(), EvilIterator( std::make_move_iterator( vecl.begin() ) ), EvilIterator( std::make_move_iterator( vecl.end() ) ) );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arrl, vecl ) );
+		}
+
+		SUBCASE( "Middle" ) {
+			arr.insert( arr.end() - 1, EvilIterator( std::make_move_iterator( arrl.begin() ) ), EvilIterator( std::make_move_iterator( arrl.end() ) ) );
+			vec.insert( vec.end() - 1, EvilIterator( std::make_move_iterator( vecl.begin() ) ), EvilIterator( std::make_move_iterator( vecl.end() ) ) );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arrl, vecl ) );
+		}
+
+		SUBCASE( "End" ) {
+			arr.insert( arr.end(), EvilIterator( std::make_move_iterator( arrl.begin() ) ), EvilIterator( std::make_move_iterator( arrl.end() ) ) );
+			vec.insert( vec.end(), EvilIterator( std::make_move_iterator( vecl.begin() ) ), EvilIterator( std::make_move_iterator( vecl.end() ) ) );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arrl, vecl ) );
 		}
 
 		AType::sReset();

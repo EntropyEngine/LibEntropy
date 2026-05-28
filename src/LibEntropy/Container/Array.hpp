@@ -1049,12 +1049,11 @@ namespace LibEntropy
 		template <typename Iterator>
 		iterator insert_uncounted( size_type inIndex, Iterator inFirst, Iterator inLast )
 		{
-			// Just needs to be an iterator...
+			size_type originalSize = mSize;
 
-			// Question. How the hell do we test this? STL has no containers or adaptors which are single pass only???
-
-			assert( false );
-			return nullptr;
+			for ( ; inFirst != inLast; ++inFirst ) emplace_back( *inFirst );
+			std::rotate( mData + inIndex, mData + originalSize, mData + mSize );
+			return mData + inIndex;
 		}
 
 	public:
@@ -1067,7 +1066,6 @@ namespace LibEntropy
 			assert( signedIndex >= 0 && signedIndex <= max_size() );
 			const size_type index = static_cast<size_type>( signedIndex );
 
-		#if 1
 			// Forward iterator, we can obtain size in O(1) or O(n) two pass
 			if constexpr ( std::forward_iterator<Iterator> ) {
 				const std::ptrdiff_t signedCount = std::ranges::distance( inFirst, inLast );
@@ -1089,84 +1087,6 @@ namespace LibEntropy
 			else {
 				return insert_uncounted( index, inFirst, inLast );
 			}
-
-		#else
-			if constexpr ( std::is_base_of_v<std::random_access_iterator_tag, typename std::iterator_traits<Iterator>::iterator_category> ) { // TODO: FIXME, should be forward_iterator concept!
-				const std::ptrdiff_t signedCount = std::distance( inFirst, inLast );
-				assert( signedCount >= 0 );
-				assert( signedCount <= std::numeric_limits<uint32_t>::max() );
-				const size_type count = static_cast<size_type>( signedCount );
-
-				if ( count == 0 ) return mData + index;
-
-				grow( count );
-				move_right( index, count );
-
-				if constexpr ( std::is_trivially_copyable_v<T> && std::contiguous_iterator<Iterator> ) {
-					std::memcpy( mData + index, std::to_address( inFirst ), count * sizeof( T ) );
-				}
-				else {
-				#if 0 // Unifies MSVC STL behaviour
-					destruct( index, std::min( index + count, mSize ) ); // FIXME: Is this desirable behaviour? This is how STL does it?
-					for ( size_type i = 0; i < count; ++i, ++inFirst ) {
-						alloc_traits::construct( get_allocator(), mData + index + i, *inFirst );
-					}
-				#else
-					for ( size_type i = 0; i < count; ++i, ++inFirst ) {
-						//construct_or_assign( index + i, *inFirst );
-						if ( index + i < mSize ) {
-							*( mData + index + i ) = *inFirst;
-						}
-						else {
-							alloc_traits::construct( get_allocator(), mData + index + i, *inFirst );
-						}
-					}
-				#endif
-				}
-
-				mSize += count;
-			}
-			else {
-			#if 0 // Prealloc mode
-				// Input/forward iterators; temp alloc, then move
-				Array<T, Allocator> temp( get_allocator() );
-
-				for ( ; inFirst != inLast; ++inFirst ) temp.emplace_back( *inFirst );
-
-				if ( !temp.empty() ) {
-					grow( temp.mSize );
-					move_right( index, temp.mSize );
-
-					if constexpr ( std::is_trivially_copyable_v<T> ) {
-						std::memcpy( mData + index, temp.mData, temp.mSize * sizeof( T ) );
-					}
-					else {
-						for ( size_type i = 0; i < temp.mSize; ++i ) {
-							//alloc_traits::construct( get_allocator(), mData + index + i, std::move( temp.mData[i] ) );
-							//construct_or_assign( index + i, std::move( temp.mData[i] ) );
-							if ( index + i < mSize ) {
-								*( mData + index + i ) = std::move( temp.mData[i] );
-							}
-							else {
-								alloc_traits::construct( get_allocator(), mData + index + i, std::move( temp.mData[i] ) );
-							}
-						}
-					}
-
-					mSize += temp.mSize;
-				}
-			#else
-				size_type originalSize = mSize;
-
-				for ( ; inFirst != inLast; ++inFirst ) emplace_back( *inFirst );
-
-				std::rotate( mData + index, mData + originalSize, mData + mSize );
-
-			#endif
-			}
-		#endif
-
-			return mData + index;
 		}
 
 		iterator insert( const_iterator inPos, std::initializer_list<T> inList )
