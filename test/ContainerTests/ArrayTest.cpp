@@ -21,7 +21,6 @@ TYPE_TO_STRING_AS( "Reserved, NoExcept", Params<true, true> );
 TYPE_TO_STRING_AS( "Reserved, Throwing", Params<true, false> );
 
 //#define ALL_PARAMS Params<false, true>, Params<false, false>, Params<true, true>, Params<true, false>
-
 #define ALL_PARAMS Params<false, true>
 //#define ALL_PARAMS Params<false, false>
 //#define ALL_PARAMS Params<true, true>
@@ -57,6 +56,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 
 		~NonTriv()
 		{
+			mValue = 0;
 			++sNumDestructors;
 		}
 
@@ -631,6 +631,181 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 			AV_CHECK();
 			REQUIRE( EnsureSame( arr, vec ) );
 			REQUIRE( EnsureSame( arrl, vecl ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+
+	TEST_CASE_TEMPLATE( "InsertThree[MoveFromListInput]", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ) };
+		vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ) };
+
+		std::list<AType> arrl = { AType( 4 ), AType( 5 ), AType( 6 ) };
+		std::list<VType> vecl = { VType( 4 ), VType( 5 ), VType( 6 ) };
+
+		if ( T::reserved ) {
+			arr.reserve( 6 );
+			vec.reserve( 6 );
+		}
+
+		AType::sReset();
+		VType::sReset();
+
+		SUBCASE( "Begin" ) {
+			arr.insert( arr.begin(), EvilIterator( std::make_move_iterator( arrl.begin() ) ), EvilIterator( std::make_move_iterator( arrl.end() ) ) );
+			vec.insert( vec.begin(), EvilIterator( std::make_move_iterator( vecl.begin() ) ), EvilIterator( std::make_move_iterator( vecl.end() ) ) );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arrl, vecl ) );
+		}
+
+		SUBCASE( "Middle" ) {
+			arr.insert( arr.end() - 1, EvilIterator( std::make_move_iterator( arrl.begin() ) ), EvilIterator( std::make_move_iterator( arrl.end() ) ) );
+			vec.insert( vec.end() - 1, EvilIterator( std::make_move_iterator( vecl.begin() ) ), EvilIterator( std::make_move_iterator( vecl.end() ) ) );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arrl, vecl ) );
+		}
+
+		SUBCASE( "End" ) {
+			arr.insert( arr.end(), EvilIterator( std::make_move_iterator( arrl.begin() ) ), EvilIterator( std::make_move_iterator( arrl.end() ) ) );
+			vec.insert( vec.end(), EvilIterator( std::make_move_iterator( vecl.begin() ) ), EvilIterator( std::make_move_iterator( vecl.end() ) ) );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arrl, vecl ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+
+	TEST_CASE_TEMPLATE( "EraseOne", T, RESERVED_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ) };
+		vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ) };
+
+		AType::sReset();
+		VType::sReset();
+
+		SUBCASE( "Begin" ) {
+			arr.erase( arr.begin() );
+			vec.erase( vec.begin() );
+
+			AV_WARN();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Middle" ) {
+			arr.erase( arr.end() - 2 );
+			vec.erase( vec.end() - 2 );
+
+			AV_WARN();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "End" ) {
+			arr.erase( arr.end() - 1 );
+			vec.erase( vec.end() - 1 );
+
+			AV_WARN();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+
+	TEST_CASE_TEMPLATE( "EraseOne[Multi]", T, RESERVED_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ) };
+		vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ) };
+
+		AType::sReset();
+		VType::sReset();
+
+		SUBCASE( "Begin" ) {
+			arr.erase( arr.begin(), arr.begin() + 1 );
+			vec.erase( vec.begin(), vec.begin() + 1 );
+
+			AV_WARN();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Middle" ) {
+			arr.erase( arr.end() - 2, arr.end() - 1 );
+			vec.erase( vec.end() - 2, vec.end() - 1 );
+
+			AV_WARN();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "End" ) {
+			arr.erase( arr.end() - 1, arr.end() );
+			vec.erase( vec.end() - 1, vec.end() );
+
+			AV_WARN();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+
+	TEST_CASE_TEMPLATE( "EraseMulti", T, RESERVED_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ), AType( 4 ) };
+		vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ), VType( 4 ) };
+
+		AType::sReset();
+		VType::sReset();
+
+		SUBCASE( "Begin" ) {
+			arr.erase( arr.begin(), arr.begin() + 2 );
+			vec.erase( vec.begin(), vec.begin() + 2 );
+
+			AV_WARN();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Middle" ) {
+			arr.erase( arr.begin() + 1, arr.begin() + 3 );
+			vec.erase( vec.begin() + 1, vec.begin() + 3 );
+
+			AV_WARN();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "End" ) {
+			arr.erase( arr.end() - 2, arr.end() );
+			vec.erase( vec.end() - 2, vec.end() );
+
+			AV_WARN();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "All" ) {
+			arr.erase( arr.begin(), arr.end() );
+			vec.erase( vec.begin(), vec.end() );
+
+			AV_WARN();
+			REQUIRE( EnsureSame( arr, vec ) );
 		}
 
 		AType::sReset();
