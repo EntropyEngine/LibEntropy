@@ -733,7 +733,6 @@ namespace LibEntropy
 
 			const size_type index = static_cast<size_type>( signedIndex );
 
-		#if 1
 			// Capcity greater than size, therefor space to insert
 			if ( mCapacity > mSize ) {
 
@@ -758,18 +757,6 @@ namespace LibEntropy
 				alloc_traits::construct( get_allocator(), mData + index, std::forward<Args>( inArgs )... );
 			}
 
-		#else
-			grow();
-			move_right( index, 1 );
-
-			if ( index >= mSize ) {
-				alloc_traits::construct( get_allocator(), mData + index, std::forward<Args>( inArgs )... );
-			}
-			else {
-				*( mData + index ) = T( std::forward<Args>( inArgs )... );
-			}
-		#endif
-
 			++mSize;
 
 			return mData + index;
@@ -786,7 +773,6 @@ namespace LibEntropy
 
 			const size_type index = static_cast<size_type>( signedIndex );
 
-		#if 1
 			// Capcity greater than size, therefor space to insert
 			if ( mCapacity > mSize ) {
 
@@ -811,18 +797,6 @@ namespace LibEntropy
 				alloc_traits::construct( get_allocator(), mData + index, inValue );
 			}
 
-		#else
-			grow();
-			move_right( index, 1 );
-
-			if ( index >= mSize ) {
-				alloc_traits::construct( get_allocator(), mData + index, inValue );
-			}
-			else {
-				*( mData + index ) = inValue;
-			}
-		#endif
-
 			++mSize;
 
 			return mData + index;
@@ -839,7 +813,6 @@ namespace LibEntropy
 
 			const size_type index = static_cast<size_type>( signedIndex );
 
-		#if 1
 			// Capcity greater than size, therefor space to insert
 			if ( mCapacity > mSize ) {
 
@@ -864,18 +837,6 @@ namespace LibEntropy
 				alloc_traits::construct( get_allocator(), mData + index, std::move( inValue ) );
 			}
 
-		#else
-			grow();
-			move_right( index, 1 );
-
-			if ( index >= mSize ) {
-				alloc_traits::construct( get_allocator(), mData + index, std::move( inValue ) );
-			}
-			else {
-				*( mData + index ) = std::move( inValue );
-			}
-		#endif
-
 			++mSize;
 
 			return mData + index;
@@ -893,7 +854,6 @@ namespace LibEntropy
 
 			const size_type index = static_cast<size_type>( signedIndex );
 
-		#if 1
 			// Capcity fits new size, therefor space to insert
 			if ( mCapacity >= mSize + inCount ) {
 
@@ -988,33 +948,6 @@ namespace LibEntropy
 					}
 				}
 			}
-
-		#else
-			grow( inCount );
-			move_right( index, inCount );
-
-			if constexpr ( std::is_trivially_copyable_v<T> ) {
-				// Single byte type
-				if constexpr ( sizeof( T ) == 1 ) {
-					std::memset( mData + index, static_cast<int>( inValue ), inCount );
-				}
-				// Multi-byte trivially copyable
-				else {
-					std::fill( mData + index, mData + index + inCount, inValue );
-				}
-			}
-			else {
-				// Non-trivial type - must construct each element properly
-				for ( size_type i = 0; i < inCount; ++i ) {
-					if ( index + i < mSize ) {
-						*( mData + index + i ) = inValue;
-					}
-					else {
-						alloc_traits::construct( get_allocator(), mData + index + i, inValue );
-					}
-				}
-			}
-		#endif
 
 			mSize += inCount;
 			return mData + index;
