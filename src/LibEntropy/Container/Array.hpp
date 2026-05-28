@@ -531,7 +531,7 @@ namespace LibEntropy
 		}
 
 		// Iterator range assign
-		template <typename Iterator> requires std::input_iterator<Iterator>
+		template <typename Iterator> requires std::input_iterator<Iterator> // TODO: FIXME, should be any iterator!
 		void assign( Iterator inFirst, Iterator inLast )
 		{
 			// Random access
@@ -953,7 +953,112 @@ namespace LibEntropy
 			return mData + index;
 		}
 
+	private:
+		template <typename Iterator> requires std::contiguous_iterator<Iterator> && std::is_trivially_copyable_v<T>
+		iterator insert_contiguous_trivial( size_type inIndex, Iterator inFirst, const size_type inCount ) // FIXME: can we merge branches?
+		{
+			// Capacity fits new size
+			if ( mCapacity >= mSize + inCount ) {
+
+				// At back, no move needed
+				if ( inIndex == mSize ) {
+					std::memcpy( mData + inIndex, inFirst, inCount ); // TODO, we can merge both branches!!!
+				}
+
+				// In middle, move needed
+				else {
+					move_right( inIndex, inCount ); // TODO, we can merge both branches!!!
+					std::memcpy( mData + inIndex, inFirst, inCount );
+				}
+			}
+
+			// Insert at back after growth
+			else if ( inIndex == mSize ) {
+				grow( inCount );
+				std::memcpy( mData + inIndex, inFirst, inCount );
+			}
+
+			// Insert middle after gapped reallocate
+			else {
+				reallocate_gapped( sizeof_grow( mSize + inCount ), inIndex, inCount );
+				std::memcpy( mData + inIndex, inFirst, inCount );
+			}
+
+			// Must increment size here!
+			mSize += inCount;
+
+			return mData + inIndex;
+		}
+
+		template <typename Iterator> requires std::forward_iterator<Iterator>
+		iterator insert_forward_counted( size_type inIndex, Iterator inFirst, const size_type inCount ) // FIXME: can we merge branches?
+		{
+			// Capacity fits new size
+			if ( mCapacity >= mSize + inCount ) {
+
+				// At back, no move needed
+				if ( inIndex == mSize ) {
+					// Must construct each element (only construct as back is uninitialised)
+					for ( size_type i = 0; i < inCount; ++i ) {
+						alloc_traits::construct( get_allocator(), mData + inIndex + i, *( inFirst++ ) );
+					}
+				}
+
+				// In middle, move needed
+				else {
+					move_right( inIndex, inCount );
+
+					// Must construct each element properly (potentially mixed construct and assign)
+					for ( size_type i = 0; i < inCount; ++i ) {
+						if ( inIndex + i < mSize ) {
+							*( mData + inIndex + i ) = *( inFirst++ );
+						}
+						else {
+							alloc_traits::construct( get_allocator(), mData + inIndex + i, *( inFirst++ ) );
+						}
+					}
+				}
+			}
+
+			// Insert at back after growth
+			else if ( inIndex == mSize ) {
+				grow( inCount );
+
+				// Must construct each element (only construct as back is uninitialised)
+				for ( size_type i = 0; i < inCount; ++i ) {
+					alloc_traits::construct( get_allocator(), mData + inIndex + i, *( inFirst++ ) );
+				}
+			}
+
+			// Insert middle after gapped reallocate
+			else {
+				reallocate_gapped( sizeof_grow( mSize + inCount ), inIndex, inCount );
+
+				// Must construct each element properly (only construct, as gap is uninitialsed)
+				for ( size_type i = 0; i < inCount; ++i ) {
+					alloc_traits::construct( get_allocator(), mData + inIndex + i, *( inFirst++ ) );
+				}
+			}
+
+			// Must increment size here!
+			mSize += inCount;
+
+			return mData + inIndex;
+		}
+
 		template <typename Iterator>
+		iterator insert_uncounted( size_type inIndex, Iterator inFirst, Iterator inLast )
+		{
+			// Just needs to be an iterator...
+
+			// Question. How the hell do we test this? STL has no containers or adaptors which are single pass only???
+
+			assert( false );
+			return nullptr;
+		}
+
+	public:
+		template <typename Iterator> // TODO: FIXME, should require iterator
 		iterator insert( const_iterator inPos, Iterator inFirst, Iterator inLast )
 		{
 			assert( inPos >= begin() && inPos <= end() && "Iterator out of range" );
@@ -962,6 +1067,30 @@ namespace LibEntropy
 			assert( signedIndex >= 0 && signedIndex <= max_size() );
 			const size_type index = static_cast<size_type>( signedIndex );
 
+		#if 1
+			// Forward iterator, we can obtain size in O(1) or O(n) two pass
+			if constexpr ( std::forward_iterator<Iterator> ) {
+				const std::ptrdiff_t signedCount = std::ranges::distance( inFirst, inLast );
+				assert( signedCount >= 0 );
+				assert( signedCount <= std::numeric_limits<uint32_t>::max() );
+				const size_type count = static_cast<size_type>( signedCount );
+
+				// TODO: FIXME, ensure signedCount + mSize < max_size()
+
+				if constexpr ( std::contiguous_iterator<Iterator> && std::is_trivially_copyable_v<T> ) {
+					return insert_contiguous_trivial( index, inFirst, count );
+				}
+				else {
+					return insert_forward_counted( index, inFirst, count );
+				}
+			}
+
+			// Single pass iterator, must perform O(n) single pass growth and rotate
+			else {
+				return insert_uncounted( index, inFirst, inLast );
+			}
+
+		#else
 			if constexpr ( std::is_base_of_v<std::random_access_iterator_tag, typename std::iterator_traits<Iterator>::iterator_category> ) { // TODO: FIXME, should be forward_iterator concept!
 				const std::ptrdiff_t signedCount = std::distance( inFirst, inLast );
 				assert( signedCount >= 0 );
@@ -1035,6 +1164,7 @@ namespace LibEntropy
 
 			#endif
 			}
+		#endif
 
 			return mData + index;
 		}
@@ -1084,6 +1214,8 @@ namespace LibEntropy
 
 			const std::ptrdiff_t signedCount = inLast - inFirst;
 			assert( signedCount >= 0 && signedCount <= std::numeric_limits<uint32_t>::max() );
+
+			// TODO: FIXME, ensure signedCount + mSize < max_size()
 
 			const size_type index = static_cast<size_type>( signedFirst );
 			const size_type count = static_cast<size_type>( signedCount );
