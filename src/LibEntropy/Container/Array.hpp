@@ -535,7 +535,7 @@ namespace LibEntropy
 		void assign( Iterator inFirst, Iterator inLast )
 		{
 			// Random access
-			if constexpr ( std::is_base_of_v<std::random_access_iterator_tag, typename std::iterator_traits<Iterator>::iterator_category> ) {
+			if constexpr ( std::is_base_of_v<std::random_access_iterator_tag, typename std::iterator_traits<Iterator>::iterator_category> ) { // TODO: FIXME, should be forward_iterator concept!
 				const size_type count = static_cast<size_type>( std::distance( inFirst, inLast ) );
 				assign_sized( inFirst, inLast, count );
 			}
@@ -1029,7 +1029,7 @@ namespace LibEntropy
 			assert( signedIndex >= 0 && signedIndex <= max_size() );
 			const size_type index = static_cast<size_type>( signedIndex );
 
-			if constexpr ( std::is_base_of_v<std::random_access_iterator_tag, typename std::iterator_traits<Iterator>::iterator_category> ) {
+			if constexpr ( std::is_base_of_v<std::random_access_iterator_tag, typename std::iterator_traits<Iterator>::iterator_category> ) { // TODO: FIXME, should be forward_iterator concept!
 				const std::ptrdiff_t signedCount = std::distance( inFirst, inLast );
 				assert( signedCount >= 0 );
 				assert( signedCount <= std::numeric_limits<uint32_t>::max() );
