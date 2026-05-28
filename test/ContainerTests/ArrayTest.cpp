@@ -944,13 +944,48 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 		VType::sReset();
 	}
 
-	// Clear
+	TEST_CASE_TEMPLATE( "Clear", T, RESERVED_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ), AType( 4 ) };
+		vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ), VType( 4 ) };
+
+		AType::sReset();
+		VType::sReset();
+
+		arr.clear();
+		vec.clear();
+
+		CHECK( arr.capacity() == vec.capacity() );
+		CHECK( arr.size() == vec.size() );
+
+		CHECK( arr.empty() );
+		REQUIRE( vec.empty() );
+
+		CHECK( arr.data() != nullptr );
+		REQUIRE( vec.data() != nullptr );
+
+		CHECK( std::distance( arr.begin(), arr.end() ) == std::distance( vec.begin(), vec.end() ) );
+		CHECK( std::distance( arr.rbegin(), arr.rend() ) == std::distance( vec.rbegin(), vec.rend() ) );
+
+		AV_WARN();
+		REQUIRE( EnsureSame( arr, vec ) );
+
+		AType::sReset();
+		VType::sReset();
+	}
 
 	// Reserve
 
 	// Resize
 
+	// Shrink to fit
+
 	// Assignment
 
 	// Copy/Move construction
+
+	// Swap
 }
