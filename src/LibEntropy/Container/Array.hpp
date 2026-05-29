@@ -962,26 +962,26 @@ namespace LibEntropy
 
 				// At back, no move needed
 				if ( inIndex == mSize ) {
-					std::memcpy( mData + inIndex, inFirst, inCount ); // TODO, we can merge both branches!!!
+					std::memcpy( mData + inIndex, inFirst, inCount * sizeof( T ) ); // TODO, we can merge both branches!!!
 				}
 
 				// In middle, move needed
 				else {
 					move_right( inIndex, inCount ); // TODO, we can merge both branches!!!
-					std::memcpy( mData + inIndex, inFirst, inCount );
+					std::memcpy( mData + inIndex, inFirst, inCount * sizeof( T ) );
 				}
 			}
 
 			// Insert at back after growth
 			else if ( inIndex == mSize ) {
 				grow( inCount );
-				std::memcpy( mData + inIndex, inFirst, inCount );
+				std::memcpy( mData + inIndex, inFirst, inCount * sizeof( T ) );
 			}
 
 			// Insert middle after gapped reallocate
 			else {
 				reallocate_gapped( sizeof_grow( mSize + inCount ), inIndex, inCount );
-				std::memcpy( mData + inIndex, inFirst, inCount );
+				std::memcpy( mData + inIndex, inFirst, inCount * sizeof( T ) );
 			}
 
 			// Must increment size here!
