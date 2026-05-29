@@ -13,3 +13,10 @@ Currently supports most of `std::vector`'s features with a few exceptions:
 - `erase_if()` *(Planned)*
 - `std::hash` specialisation *(Planned)*
 - `ranges` support and other C++23 features *(Unsure)*
+
+#### TODO
+- Fix the FIXMEs
+- `erase_if()`
+- `std::hash` specialisation
+- More tests
+- Benchmarks
