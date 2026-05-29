@@ -6,7 +6,7 @@
       <Item Name="[size]">mSize</Item>
       <Item Name="[capacity]">mCapacity</Item>
       <ArrayItems>
-        <Size>mCapacity</Size>
+        <Size>mSize</Size>
         <ValuePointer>mData</ValuePointer>
       </ArrayItems>
     </Expand>
