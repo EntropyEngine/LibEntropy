@@ -468,55 +468,6 @@ namespace LibEntropy
 			}
 		}
 	private:
-		template <typename Iterator>
-		void assign_sized_OLD( Iterator inFirst, Iterator inLast, size_type inCount )
-		{
-			// Fast path for trivially copyable types + pointer/contiguous iterators
-			if constexpr ( std::is_trivially_copyable_v<T> && std::contiguous_iterator<Iterator> ) {
-				if ( inCount > mCapacity ) {
-					destroy();
-					reserve( inCount );
-				}
-
-				if ( inCount > 0 ) {
-					std::memcpy( mData, std::to_address( inFirst ), inCount * sizeof( T ) );
-				}
-
-				mSize = inCount;
-			}
-
-			// Standard assignment; construct/assign/destroy
-			else {
-				if ( inCount > mCapacity ) {
-					// Destroy, then rebuild
-					destroy();
-					reserve( inCount );
-					for ( ; inFirst != inLast; ++inFirst ) {
-						alloc_traits::construct( get_allocator(), mData + mSize++, *inFirst );
-					}
-				}
-				else {
-					// Buffer is large enough, assign over existing elements, construct into uninitialised capactiy, destruct any leftovers
-
-					const size_type overlap = std::min( inCount, mSize );
-
-					size_type i = 0;
-					for ( ; i < overlap; ++i, ++inFirst ) {
-						mData[i] = *inFirst;
-					}
-
-					for ( ; inFirst != inLast; ++inFirst ) {
-						alloc_traits::construct( get_allocator(), mData + mSize++, *inFirst );
-					}
-
-					if ( inCount < mSize ) {
-						destruct( inCount, mSize );
-						mSize = inCount;
-					}
-				}
-			}
-		}
-
 		template <typename Iterator> requires std::contiguous_iterator<Iterator> && std::is_trivially_copyable_v<T>
 		void assign_contiguous_trivial( Iterator inFirst, size_type inCount )
 		{
@@ -610,7 +561,6 @@ namespace LibEntropy
 		template <typename Iterator> requires std::input_iterator<Iterator> // TODO: FIXME, should be any iterator!
 		void assign( Iterator inFirst, Iterator inLast )
 		{
-		#if 1
 			if constexpr ( std::forward_iterator<Iterator> ) {
 				const std::ptrdiff_t signedCount = std::ranges::distance( inFirst, inLast );
 				assert( signedCount >= 0 );
@@ -624,21 +574,6 @@ namespace LibEntropy
 			else {
 				assign_uncounted( inFirst, inLast );
 			}
-		#else
-			// Random access
-			if constexpr ( std::is_base_of_v<std::random_access_iterator_tag, typename std::iterator_traits<Iterator>::iterator_category> ) { // TODO: FIXME, should be forward_iterator concept!
-				const size_type count = static_cast<size_type>( std::distance( inFirst, inLast ) );
-				assign_sized_OLD( inFirst, inLast, count );
-			}
-
-			// Input/forward iterators: Clear first and grow as we go
-			else {
-				clear();
-				for ( ; inFirst != inLast; ++inFirst ) {
-					emplace_back( *inFirst );
-				}
-			}
-		#endif
 		}
 
 		// Initializer list assign
