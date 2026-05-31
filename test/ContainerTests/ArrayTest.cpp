@@ -690,7 +690,56 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 		using reference = typename Iter::reference;
 
 		EvilIterator( Iter inIter ) : Iter( inIter ) {}
+
+		EvilIterator& operator++() {
+			Iter::operator++();
+			return *this;
+		}
+
+		auto operator++( int ) {
+			return ++static_cast<Iter &>( *this );
+		}
 	};
+
+	using EvilIt = EvilIterator<std::move_iterator<std::vector<int>::iterator>>;
+
+	static_assert( std::input_iterator<EvilIt> );
+	static_assert( std::input_or_output_iterator<EvilIt> );
+
+	static_assert( std::weakly_incrementable<EvilIt> );
+	static_assert( std::movable<EvilIt> );
+
+	static_assert( requires( EvilIt i ) {
+		{ *i } -> std::_Can_reference;
+	} );
+
+	static_assert( requires( EvilIt __i ) {
+		typename std::iter_difference_t<EvilIt>;
+		requires std::_Signed_integer_like<std::iter_difference_t<EvilIt>>;
+		{ ++__i } -> std::same_as<EvilIt&>;
+		__i++;
+	} );
+
+	static_assert( requires( EvilIt __i ) {
+		typename std::iter_difference_t<EvilIt>;
+	} );
+
+	static_assert( requires( EvilIt __i ) {
+		requires std::_Signed_integer_like<std::iter_difference_t<EvilIt>>;
+	} );
+
+	static_assert( requires( EvilIt __i ) {
+		{ ++__i } -> std::same_as<EvilIt&>;
+	} );
+
+	static_assert( requires( EvilIt __i ) {
+		__i++;
+	} );
+
+	static_assert( std::indirectly_readable<EvilIt> );
+	static_assert( requires { typename std::_Iter_concept<EvilIt>; } );
+	static_assert( std::derived_from<std::_Iter_concept<EvilIt>, std::input_iterator_tag> );
+
 
 	TEST_CASE_TEMPLATE( "InsertThree[MoveFromVectorInput]", T, ALL_PARAMS )
 	{
@@ -984,6 +1033,468 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 	// Shrink to fit
 
 	// Assignment
+
+	TEST_CASE_TEMPLATE( "Assign[Count]", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		//Array<AType> arrl = { AType( 4 ), AType( 5 ), AType( 6 ) };
+		//vector<VType> vecl = { VType( 4 ), VType( 5 ), VType( 6 ) };
+
+		SUBCASE( "Empty" ) {
+			Array<AType> arr;
+			vector<VType> vec;
+
+			if ( T::reserved ) {
+				arr.reserve( 3 );
+				vec.reserve( 3 );
+			}
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( 3, AType( 4 ) );
+			vec.assign( 3, VType( 4 ) );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Partial" ) {
+			Array<AType> arr = { AType( 1 ) };
+			vector<VType> vec = { VType( 1 ) };
+
+			if ( T::reserved ) {
+				arr.reserve( 3 );
+				vec.reserve( 3 );
+			}
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( 3, AType( 4 ) );
+			vec.assign( 3, VType( 4 ) );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Partial[WrongReserve]" ) {
+			Array<AType> arr = { AType( 1 ) };
+			vector<VType> vec = { VType( 1 ) };
+
+			arr.reserve( T::reserved ? 4 : 2 );
+			vec.reserve( T::reserved ? 4 : 2 );
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( 3, AType( 4 ) );
+			vec.assign( 3, VType( 4 ) );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Exact" ) {
+			Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ) };
+			vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ) };
+
+			if ( T::reserved ) {
+				arr.reserve( 3 );
+				vec.reserve( 3 );
+			}
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( 3, AType( 4 ) );
+			vec.assign( 3, VType( 4 ) );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Shorter" ) {
+			Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ), AType( 4 ) };
+			vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ), VType( 4 ) };
+
+			if ( T::reserved ) {
+				arr.reserve( 3 );
+				vec.reserve( 3 );
+			}
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( 3, AType( 4 ) );
+			vec.assign( 3, VType( 4 ) );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+
+	TEST_CASE_TEMPLATE( "Assign[FromVector]", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arrl = { AType( 4 ), AType( 5 ), AType( 6 ) };
+		vector<VType> vecl = { VType( 4 ), VType( 5 ), VType( 6 ) };
+
+		SUBCASE( "Empty" ) {
+			Array<AType> arr;
+			vector<VType> vec;
+
+			if ( T::reserved ) {
+				arr.reserve( 3 );
+				vec.reserve( 3 );
+			}
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( arrl.begin(), arrl.end() );
+			vec.assign( vecl.begin(), vecl.end() );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Partial" ) {
+			Array<AType> arr = { AType( 1 ) };
+			vector<VType> vec = { VType( 1 ) };
+
+			if ( T::reserved ) {
+				arr.reserve( 3 );
+				vec.reserve( 3 );
+			}
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( arrl.begin(), arrl.end() );
+			vec.assign( vecl.begin(), vecl.end() );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Partial[WrongReserve]" ) {
+			Array<AType> arr = { AType( 1 ) };
+			vector<VType> vec = { VType( 1 ) };
+
+			arr.reserve( T::reserved ? 4 : 2 );
+			vec.reserve( T::reserved ? 4 : 2 );
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( arrl.begin(), arrl.end() );
+			vec.assign( vecl.begin(), vecl.end() );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Exact" ) {
+			Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ) };
+			vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ) };
+
+			if ( T::reserved ) {
+				arr.reserve( 3 );
+				vec.reserve( 3 );
+			}
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( arrl.begin(), arrl.end() );
+			vec.assign( vecl.begin(), vecl.end() );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Shorter" ) {
+			Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ), AType( 4 ) };
+			vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ), VType( 4 ) };
+
+			if ( T::reserved ) {
+				arr.reserve( 3 );
+				vec.reserve( 3 );
+			}
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( arrl.begin(), arrl.end() );
+			vec.assign( vecl.begin(), vecl.end() );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+
+	TEST_CASE_TEMPLATE( "Assign[FromList]", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		std::list<AType> arrl = { AType( 4 ), AType( 5 ), AType( 6 ) };
+		std::list<VType> vecl = { VType( 4 ), VType( 5 ), VType( 6 ) };
+
+		SUBCASE( "Empty" ) {
+			Array<AType> arr;
+			vector<VType> vec;
+
+			if ( T::reserved ) {
+				arr.reserve( 3 );
+				vec.reserve( 3 );
+			}
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( arrl.begin(), arrl.end() );
+			vec.assign( vecl.begin(), vecl.end() );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Partial" ) {
+			Array<AType> arr = { AType( 1 ) };
+			vector<VType> vec = { VType( 1 ) };
+
+			if ( T::reserved ) {
+				arr.reserve( 3 );
+				vec.reserve( 3 );
+			}
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( arrl.begin(), arrl.end() );
+			vec.assign( vecl.begin(), vecl.end() );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Partial[WrongReserve]" ) {
+			Array<AType> arr = { AType( 1 ) };
+			vector<VType> vec = { VType( 1 ) };
+
+			arr.reserve( T::reserved ? 4 : 2 );
+			vec.reserve( T::reserved ? 4 : 2 );
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( arrl.begin(), arrl.end() );
+			vec.assign( vecl.begin(), vecl.end() );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Exact" ) {
+			Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ) };
+			vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ) };
+
+			if ( T::reserved ) {
+				arr.reserve( 3 );
+				vec.reserve( 3 );
+			}
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( arrl.begin(), arrl.end() );
+			vec.assign( vecl.begin(), vecl.end() );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Shorter" ) {
+			Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ), AType( 4 ) };
+			vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ), VType( 4 ) };
+
+			if ( T::reserved ) {
+				arr.reserve( 3 );
+				vec.reserve( 3 );
+			}
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( arrl.begin(), arrl.end() );
+			vec.assign( vecl.begin(), vecl.end() );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+
+	TEST_CASE_TEMPLATE( "Assign[MoveFromInputList]", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		std::list<AType> arrl = { AType( 4 ), AType( 5 ), AType( 6 ) };
+		std::list<VType> vecl = { VType( 4 ), VType( 5 ), VType( 6 ) };
+
+		SUBCASE( "Empty" ) {
+			Array<AType> arr;
+			vector<VType> vec;
+
+			if ( T::reserved ) {
+				arr.reserve( 3 );
+				vec.reserve( 3 );
+			}
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( EvilIterator( std::make_move_iterator( arrl.begin() ) ), EvilIterator( std::make_move_iterator( arrl.end() ) ) );
+			vec.assign( EvilIterator( std::make_move_iterator( vecl.begin() ) ), EvilIterator( std::make_move_iterator( vecl.end() ) ) );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Partial" ) {
+			Array<AType> arr = { AType( 1 ) };
+			vector<VType> vec = { VType( 1 ) };
+
+			if ( T::reserved ) {
+				arr.reserve( 3 );
+				vec.reserve( 3 );
+			}
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( EvilIterator( std::make_move_iterator( arrl.begin() ) ), EvilIterator( std::make_move_iterator( arrl.end() ) ) );
+			vec.assign( EvilIterator( std::make_move_iterator( vecl.begin() ) ), EvilIterator( std::make_move_iterator( vecl.end() ) ) );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Partial[WrongReserve]" ) {
+			Array<AType> arr = { AType( 1 ) };
+			vector<VType> vec = { VType( 1 ) };
+
+			arr.reserve( T::reserved ? 4 : 2 );
+			vec.reserve( T::reserved ? 4 : 2 );
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( EvilIterator( std::make_move_iterator( arrl.begin() ) ), EvilIterator( std::make_move_iterator( arrl.end() ) ) );
+			vec.assign( EvilIterator( std::make_move_iterator( vecl.begin() ) ), EvilIterator( std::make_move_iterator( vecl.end() ) ) );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Exact" ) {
+			Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ) };
+			vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ) };
+
+			if ( T::reserved ) {
+				arr.reserve( 3 );
+				vec.reserve( 3 );
+			}
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( EvilIterator( std::make_move_iterator( arrl.begin() ) ), EvilIterator( std::make_move_iterator( arrl.end() ) ) );
+			vec.assign( EvilIterator( std::make_move_iterator( vecl.begin() ) ), EvilIterator( std::make_move_iterator( vecl.end() ) ) );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		SUBCASE( "Shorter" ) {
+			Array<AType> arr = { AType( 1 ), AType( 2 ), AType( 3 ), AType( 4 ) };
+			vector<VType> vec = { VType( 1 ), VType( 2 ), VType( 3 ), VType( 4 ) };
+
+			if ( T::reserved ) {
+				arr.reserve( 3 );
+				vec.reserve( 3 );
+			}
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( EvilIterator( std::make_move_iterator( arrl.begin() ) ), EvilIterator( std::make_move_iterator( arrl.end() ) ) );
+			vec.assign( EvilIterator( std::make_move_iterator( vecl.begin() ) ), EvilIterator( std::make_move_iterator( vecl.end() ) ) );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+
+	// Special construction
 
 	// Copy/Move construction
 
