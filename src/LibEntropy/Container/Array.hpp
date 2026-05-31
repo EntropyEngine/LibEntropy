@@ -279,14 +279,14 @@ namespace LibEntropy
 		Array( const Array &inRHS ) :
 			Allocator( alloc_traits::select_on_container_copy_construction( inRHS.get_allocator() ) )
 		{
-			assign( inRHS.begin(), inRHS.end() );
+			assign_sized( inRHS.begin(), inRHS.size() );
 		}
 
 		// Copy constructor - with explict allocator override
 		Array( const Array &inRHS, const Allocator &inAllocator ) : // TODO: type_identity_t?
 			Allocator( inAllocator )
 		{
-			assign( inRHS.begin(), inRHS.end() );
+			assign_sized( inRHS.begin(), inRHS.size() );
 		}
 
 		// Move construct - take full ownership from source
@@ -1210,8 +1210,8 @@ namespace LibEntropy
 		}
 
 		// Allocator helpers
-		Allocator&			get_allocator()			{ return *this; }
-		const Allocator&	get_allocator() const	{ return *this; }
+		Allocator&			get_allocator()	noexcept		{ return *this; }
+		const Allocator&	get_allocator() const noexcept	{ return *this; }
 
 		// Comparison
 		friend bool operator==( const Array& inLHS, const Array& inRHS )
