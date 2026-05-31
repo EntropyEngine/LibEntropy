@@ -697,7 +697,7 @@ TEST_SUITE( "ArrayTest: NonTrival" )
 		}
 
 		auto operator++( int ) {
-			return ++static_cast<Iter &>( *this );
+			return static_cast<Iter &>( *this )++;
 		}
 	};
 
