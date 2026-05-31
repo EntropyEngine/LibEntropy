@@ -233,68 +233,6 @@ namespace LibEntropy
 			}
 		}
 
-		template <typename Iterator>
-		void assign_sized( Iterator inFirst, Iterator inLast, size_type inCount )
-		{
-			// Fast path for trivially copyable types + pointer/contiguous iterators
-			if constexpr ( std::is_trivially_copyable_v<T> && std::contiguous_iterator<Iterator> ) {
-				if ( inCount > mCapacity ) {
-					destroy();
-					reserve( inCount );
-				}
-
-				if ( inCount > 0 ) {
-					std::memcpy( mData, std::to_address( inFirst ), inCount * sizeof( T ) );
-				}
-
-				mSize = inCount;
-			}
-
-			// Standard assignment; construct/assign/destroy
-			else {
-				if ( inCount > mCapacity ) {
-					// Destroy, then rebuild
-					destroy();
-					reserve( inCount );
-					for ( ; inFirst != inLast; ++inFirst ) {
-						alloc_traits::construct( get_allocator(), mData + mSize++, *inFirst );
-					}
-				}
-				else {
-					// Buffer is large enough, assign over existing elements, construct into uninitialised capactiy, destruct any leftovers
-
-					const size_type overlap = std::min( inCount, mSize );
-
-					size_type i = 0;
-					for ( ; i < overlap; ++i, ++inFirst ) {
-						mData[i] = *inFirst;
-					}
-
-					for ( ; inFirst != inLast; ++inFirst ) {
-						alloc_traits::construct( get_allocator(), mData + mSize++, *inFirst );
-					}
-
-					if ( inCount < mSize ) {
-						destruct( inCount, mSize );
-						mSize = inCount;
-					}
-				}
-			}
-		}
-
-		/*
-		template <typename... Args>
-		void construct_or_assign( size_type inIndex, Args&&... inArgs )
-		{
-			if ( inIndex >= mSize ) {
-				alloc_traits::construct( get_allocator(), mData + inIndex, std::forward<Args>( inArgs )... );
-			}
-			else {
-				*( mData + inIndex ) = T( std::forward<Args>( inArgs )... );
-			}
-		}
-		*/
-
 	public:
 
 	#pragma region Constructors
@@ -529,15 +467,168 @@ namespace LibEntropy
 
 			}
 		}
+	private:
+		template <typename Iterator>
+		void assign_sized_OLD( Iterator inFirst, Iterator inLast, size_type inCount )
+		{
+			// Fast path for trivially copyable types + pointer/contiguous iterators
+			if constexpr ( std::is_trivially_copyable_v<T> && std::contiguous_iterator<Iterator> ) {
+				if ( inCount > mCapacity ) {
+					destroy();
+					reserve( inCount );
+				}
 
+				if ( inCount > 0 ) {
+					std::memcpy( mData, std::to_address( inFirst ), inCount * sizeof( T ) );
+				}
+
+				mSize = inCount;
+			}
+
+			// Standard assignment; construct/assign/destroy
+			else {
+				if ( inCount > mCapacity ) {
+					// Destroy, then rebuild
+					destroy();
+					reserve( inCount );
+					for ( ; inFirst != inLast; ++inFirst ) {
+						alloc_traits::construct( get_allocator(), mData + mSize++, *inFirst );
+					}
+				}
+				else {
+					// Buffer is large enough, assign over existing elements, construct into uninitialised capactiy, destruct any leftovers
+
+					const size_type overlap = std::min( inCount, mSize );
+
+					size_type i = 0;
+					for ( ; i < overlap; ++i, ++inFirst ) {
+						mData[i] = *inFirst;
+					}
+
+					for ( ; inFirst != inLast; ++inFirst ) {
+						alloc_traits::construct( get_allocator(), mData + mSize++, *inFirst );
+					}
+
+					if ( inCount < mSize ) {
+						destruct( inCount, mSize );
+						mSize = inCount;
+					}
+				}
+			}
+		}
+
+		template <typename Iterator> requires std::contiguous_iterator<Iterator> && std::is_trivially_copyable_v<T>
+		void assign_contiguous_trivial( Iterator inFirst, size_type inCount )
+		{
+			//TODO: OPTIMIZE PATHS
+
+			if ( mCapacity >= inCount ) {
+				std::memcpy( mData, std::to_address( inFirst ), inCount * sizeof( T ) );
+			}
+			else {
+				//TODO: OPTIMIZE DESTROY
+				destroy();
+				reserve( inCount );
+
+				std::memcpy( mData, std::to_address( inFirst ), inCount * sizeof( T ) );
+			}
+
+			mSize = inCount;
+		}
+
+		template <typename Iterator> requires std::forward_iterator<Iterator>
+		void assign_forward_counted( Iterator inFirst, size_type inCount )
+		{
+			//TODO: OPTIMIZE PATHS
+
+			if ( mCapacity >= inCount ) {
+				for ( size_type i = 0; i < inCount; ++i ) {
+					if ( i < mSize ) {
+						*( mData + i ) = *( inFirst++ );
+					}
+					else {
+						alloc_traits::construct( get_allocator(), mData + i, *( inFirst++ ) );
+					}
+				}
+
+				destruct( inCount, mSize );
+			}
+			else {
+				//TODO: OPTIMIZE DESTROY
+				destroy();
+				reserve( inCount );
+
+				for ( size_type i = 0; i < inCount; ++i ) {
+					alloc_traits::construct( get_allocator(), mData + i, *( inFirst++ ) );
+				}
+			}
+
+			mSize = inCount;
+		}
+
+		template <typename Iterator> requires std::forward_iterator<Iterator>
+		void assign_sized( Iterator inFirst, size_type inCount )
+		{
+			if constexpr ( std::contiguous_iterator<Iterator> && std::is_trivially_copyable_v<T> ) {
+				assign_contiguous_trivial( inFirst, inCount );
+			}
+			else {
+				assign_forward_counted( inFirst, inCount );
+			}
+		}
+
+		template <typename Iterator>
+		void assign_uncounted( Iterator inFirst, Iterator inLast )
+		{
+			size_type count = 0;
+
+			// Assign over
+			for ( ; count < mSize && inFirst != inLast; ++count ) {
+				mData[count] = *( inFirst++ );
+			}
+
+			// Destroy leftover initialised elements if exhausted
+			destruct( count, mSize );
+
+			// If inexhausted keep allocating
+			for ( ; count < mCapacity && inFirst != inLast; ++count ) {
+				alloc_traits::construct( get_allocator(), mData + count, *( inFirst++ ) );
+			}
+
+			// Set current size, keep going if inexhausted
+			mSize = count;
+
+			for ( ; inFirst != inLast; ++inFirst ) {
+				if ( mCapacity == mSize ) grow();
+				alloc_traits::construct( get_allocator(), mData + mSize, *inFirst );
+				++mSize;
+			}
+		}
+
+	public:
 		// Iterator range assign
 		template <typename Iterator> requires std::input_iterator<Iterator> // TODO: FIXME, should be any iterator!
 		void assign( Iterator inFirst, Iterator inLast )
 		{
+		#if 1
+			if constexpr ( std::forward_iterator<Iterator> ) {
+				const std::ptrdiff_t signedCount = std::ranges::distance( inFirst, inLast );
+				assert( signedCount >= 0 );
+				assert( signedCount <= std::numeric_limits<uint32_t>::max() );
+				const size_type count = static_cast<size_type>( signedCount );
+
+				// TODO: FIXME, ensure signedCount < max_size()
+
+				assign_sized( inFirst, count );
+			}
+			else {
+				assign_uncounted( inFirst, inLast );
+			}
+		#else
 			// Random access
 			if constexpr ( std::is_base_of_v<std::random_access_iterator_tag, typename std::iterator_traits<Iterator>::iterator_category> ) { // TODO: FIXME, should be forward_iterator concept!
 				const size_type count = static_cast<size_type>( std::distance( inFirst, inLast ) );
-				assign_sized( inFirst, inLast, count );
+				assign_sized_OLD( inFirst, inLast, count );
 			}
 
 			// Input/forward iterators: Clear first and grow as we go
@@ -547,12 +638,13 @@ namespace LibEntropy
 					emplace_back( *inFirst );
 				}
 			}
+		#endif
 		}
 
 		// Initializer list assign
 		void assign( std::initializer_list<T> inList )
 		{
-			assign_sized( inList.begin(), inList.end(), static_cast<size_type>( inList.size() ) );
+			assign_sized( inList.begin(), static_cast<size_type>( inList.size() ) );
 		}
 		
 		/// @}
@@ -957,31 +1049,32 @@ namespace LibEntropy
 		template <typename Iterator> requires std::contiguous_iterator<Iterator> && std::is_trivially_copyable_v<T>
 		iterator insert_contiguous_trivial( size_type inIndex, Iterator inFirst, const size_type inCount ) // FIXME: can we merge branches?
 		{
+			// IMPORTANT: FIXME! STD::TO_ADDRESS!!!!
 			// Capacity fits new size
 			if ( mCapacity >= mSize + inCount ) {
 
 				// At back, no move needed
 				if ( inIndex == mSize ) {
-					std::memcpy( mData + inIndex, inFirst, inCount * sizeof( T ) ); // TODO, we can merge both branches!!!
+					std::memcpy( mData + inIndex, std::to_address( inFirst ), inCount * sizeof( T ) ); // TODO, we can merge both branches!!!
 				}
 
 				// In middle, move needed
 				else {
 					move_right( inIndex, inCount ); // TODO, we can merge both branches!!!
-					std::memcpy( mData + inIndex, inFirst, inCount * sizeof( T ) );
+					std::memcpy( mData + inIndex, std::to_address( inFirst ), inCount * sizeof( T ) );
 				}
 			}
 
 			// Insert at back after growth
 			else if ( inIndex == mSize ) {
 				grow( inCount );
-				std::memcpy( mData + inIndex, inFirst, inCount * sizeof( T ) );
+				std::memcpy( mData + inIndex, std::to_address( inFirst ), inCount * sizeof( T ) );
 			}
 
 			// Insert middle after gapped reallocate
 			else {
 				reallocate_gapped( sizeof_grow( mSize + inCount ), inIndex, inCount );
-				std::memcpy( mData + inIndex, inFirst, inCount * sizeof( T ) );
+				std::memcpy( mData + inIndex, std::to_address( inFirst ), inCount * sizeof( T ) );
 			}
 
 			// Must increment size here!
