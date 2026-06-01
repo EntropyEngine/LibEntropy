@@ -2347,6 +2347,8 @@ TEST_SUITE( "ArrayTest/NonTrival/AssignMethods" )
 		int x = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
 
 		SUBCASE( "Src=" + doctest::toString( i ) + " Dst=" + doctest::toString( x ) ) {
+			AType::sReset();
+			VType::sReset();
 
 			if ( T::reserved ) {
 				arr.reserve( i );
@@ -2358,8 +2360,6 @@ TEST_SUITE( "ArrayTest/NonTrival/AssignMethods" )
 				vec.emplace_back( y );
 			}
 
-			AType::sReset();
-			VType::sReset();
 
 			arr.assign( i, AType( i ) );
 			vec.assign( i, VType( i ) );
@@ -2389,6 +2389,9 @@ TEST_SUITE( "ArrayTest/NonTrival/AssignMethods" )
 		int x = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
 
 		SUBCASE( "Src=" + doctest::toString( i ) + " Dst=" + doctest::toString( x ) ) {
+			AType::sReset();
+			VType::sReset();
+
 			for ( int j = 0; j < i; ++j ) {
 				arrSrc.emplace_back( j );
 				vecSrc.emplace_back( j );
@@ -2404,11 +2407,57 @@ TEST_SUITE( "ArrayTest/NonTrival/AssignMethods" )
 				vec.emplace_back( y );
 			}
 
-			AType::sReset();
-			VType::sReset();
 
 			arr.assign( arrSrc.begin(), arrSrc.end() );
 			vec.assign( vecSrc.begin(), vecSrc.end() );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arrSrc, vecSrc ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+
+	TEST_CASE_TEMPLATE( "Varying[MoveFromInputList]", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		std::list<AType> arrSrc;
+		std::list<VType> vecSrc;
+
+		Array<AType> arr;
+		vector<VType> vec;
+
+		int i = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
+		int x = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
+
+		SUBCASE( "Src=" + doctest::toString( i ) + " Dst=" + doctest::toString( x ) ) {
+			AType::sReset();
+			VType::sReset();
+
+			for ( int j = 0; j < i; ++j ) {
+				arrSrc.emplace_back( j );
+				vecSrc.emplace_back( j );
+			}
+
+			if ( T::reserved ) {
+				arr.reserve( i );
+				vec.reserve( i );
+			}
+
+			for ( int y = 0; y < x; ++y ) {
+				arr.emplace_back( y );
+				vec.emplace_back( y );
+			}
+
+
+			arr.assign( EvilIterator( std::make_move_iterator( arrSrc.begin() ) ), EvilIterator( std::make_move_iterator( arrSrc.end() ) ) );
+			vec.assign( EvilIterator( std::make_move_iterator( vecSrc.begin() ) ), EvilIterator( std::make_move_iterator( vecSrc.end() ) ) );
 
 			CHECK( arr.capacity() == vec.capacity() );
 
@@ -2771,7 +2820,6 @@ TEST_SUITE( "ArrayTest/NonTrival/CopyMoveAssignment" )
 		VType::sReset();
 	}
 
-	/* TODO: ELABORATE
 	TEST_CASE_TEMPLATE( "InitAssign", T, RESERVED_PARAMS )
 	{
 		using AType = NonTriv<true, T::no_except>;
@@ -2783,6 +2831,9 @@ TEST_SUITE( "ArrayTest/NonTrival/CopyMoveAssignment" )
 		Array<AType> arr{ AType( 1 ), AType( 2 ), AType( 3 ), AType( 4 ) };
 		vector<VType> vec{ VType( 1 ), VType( 2 ), VType( 3 ), VType( 4 ) };
 
+		arr = { AType( 5 ), AType( 6 ), AType( 7 ) };
+		vec = { VType( 5 ), VType( 6 ), VType( 7 ) };
+
 		CHECK( arr.capacity() == vec.capacity() );
 
 		AV_CHECK();
@@ -2791,7 +2842,6 @@ TEST_SUITE( "ArrayTest/NonTrival/CopyMoveAssignment" )
 		AType::sReset();
 		VType::sReset();
 	}
-	*/
 }
 
 TEST_SUITE( "ArrayTest/NonTrival/Swap" )
