@@ -45,7 +45,7 @@ namespace LibEntropy
 
 			if ( minSize > mCapacity ) {
 				const size_type newCapacity = std::max( minSize, mCapacity + mCapacity / 2 ); // 1.5x growth
-				reserve( newCapacity );
+				reallocate( newCapacity );
 			}
 		}
 
@@ -56,6 +56,22 @@ namespace LibEntropy
 			assert( inNewMinimum > mCapacity );
 
 			return std::max( inNewMinimum, mCapacity + mCapacity / 2 ); // 1.5x growth
+		}
+
+		void clear_grow( size_type inNewMinimum )
+		{
+			// Overflow check and correctness check for unnecessary grow
+			assert( inNewMinimum > mCapacity );
+
+			const size_type newCapacity = std::max( inNewMinimum, mCapacity + mCapacity / 2 ); // 1.5x growth
+
+			pointer newElements = alloc_traits::allocate( get_allocator(), newCapacity );
+
+			destruct( 0, mSize );
+			alloc_traits::deallocate( get_allocator(), mData, mCapacity );
+
+			mData = newElements;
+			mCapacity = newCapacity;
 		}
 
 		/// Reallocates all data into a new block of size inNewCapacity
@@ -418,8 +434,9 @@ namespace LibEntropy
 
 				// If count greater than capacity destroy data, reserve new memory
 				if ( inCount > mCapacity ) {
-					destroy();
-					reserve( inCount );
+					//destroy();
+					//reserve( inCount );
+					clear_grow( inCount );
 				}
 
 				if constexpr ( sizeof( T ) == 1 ) {
@@ -439,8 +456,9 @@ namespace LibEntropy
 
 				// If count greater than capacity destroy data, reserve new memory, loop construct
 				if ( inCount > mCapacity ) {
-					destroy();
-					reserve( inCount );
+					//destroy();
+					//reserve( inCount );
+					clear_grow( inCount );
 
 					for ( size_type i = 0; i < inCount; ++i ) {
 						alloc_traits::construct( get_allocator(), mData + i, inValue );
@@ -478,8 +496,9 @@ namespace LibEntropy
 			}
 			else {
 				//TODO: OPTIMIZE DESTROY
-				destroy();
-				reserve( inCount );
+				//destroy();
+				//reserve( inCount );
+				clear_grow( inCount );
 
 				std::memcpy( mData, std::to_address( inFirst ), inCount * sizeof( T ) );
 			}
@@ -506,8 +525,9 @@ namespace LibEntropy
 			}
 			else {
 				//TODO: OPTIMIZE DESTROY
-				destroy();
-				reserve( inCount );
+				//destroy();
+				//reserve( inCount );
+				clear_grow( inCount );
 
 				for ( size_type i = 0; i < inCount; ++i ) {
 					alloc_traits::construct( get_allocator(), mData + i, *( inFirst++ ) );
@@ -623,17 +643,23 @@ namespace LibEntropy
 
 		void resize( size_type inNewSize )
 		{
-			destruct( inNewSize, mSize ); // Destruct tail, if any
-			reserve( inNewSize ); // Reserve new size, if needed
-
-			if constexpr ( !std::is_trivially_default_constructible_v<T> ) {
-				for ( size_type i = mSize; i < inNewSize; ++i ) {
-					alloc_traits::construct( get_allocator(), mData + i );
-				}
+			if ( inNewSize < mSize ) {
+				destruct( inNewSize, mSize ); // Destruct tail, if any
 			}
-			else {
-				// TODO: should we zero init? Or is blank init okay?
-				// FIXME
+			else if ( inNewSize > mSize ) {
+				if ( inNewSize > mCapacity ) {
+					reallocate( sizeof_grow( inNewSize ) ); // Reserve new size, if needed
+				}
+
+				if constexpr ( !std::is_trivially_default_constructible_v<T> ) {
+					for ( size_type i = mSize; i < inNewSize; ++i ) {
+						alloc_traits::construct( get_allocator(), mData + i );
+					}
+				}
+				else {
+					// TODO: should we zero init? Or is blank init okay?
+					// FIXME
+				}
 			}
 
 			mSize = inNewSize;
@@ -649,7 +675,9 @@ namespace LibEntropy
 				mSize = inNewSize;
 			}
 			else if ( inNewSize > mSize ) {
-				reserve( inNewSize );
+				if ( inNewSize > mCapacity ) {
+					reallocate( sizeof_grow( inNewSize ) ); // Reserve new size, if needed
+				}
 
 				if constexpr ( std::is_trivially_copyable_v<T> ) {
 					if constexpr ( sizeof( T ) == 1 ) {

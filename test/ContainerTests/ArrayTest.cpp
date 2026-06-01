@@ -1608,6 +1608,93 @@ TEST_SUITE( "ArrayTest/NonTrival/AssignMethods" )
 		AType::sReset();
 		VType::sReset();
 	}
+
+
+	TEST_CASE_TEMPLATE( "Varying[Count]", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr;
+		vector<VType> vec;
+
+		int i = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
+		int x = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
+
+		SUBCASE( "Src=" + doctest::toString( i ) + " Dst=" + doctest::toString( x ) ) {
+
+			if ( T::reserved ) {
+				arr.reserve( i );
+				vec.reserve( i );
+			}
+
+			for ( int y = 0; y < x; ++y ) {
+				arr.emplace_back( y );
+				vec.emplace_back( y );
+			}
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( i, AType( i ) );
+			vec.assign( i, VType( i ) );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+
+	TEST_CASE_TEMPLATE( "Varying[FromVector]", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arrSrc;
+		vector<VType> vecSrc;
+
+		Array<AType> arr;
+		vector<VType> vec;
+
+		int i = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
+		int x = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
+
+		SUBCASE( "Src=" + doctest::toString( i ) + " Dst=" + doctest::toString( x ) ) {
+			for ( int j = 0; j < i; ++j ) {
+				arrSrc.emplace_back( j );
+				vecSrc.emplace_back( j );
+			}
+
+			if ( T::reserved ) {
+				arr.reserve( i );
+				vec.reserve( i );
+			}
+
+			for ( int y = 0; y < x; ++y ) {
+				arr.emplace_back( y );
+				vec.emplace_back( y );
+			}
+
+			AType::sReset();
+			VType::sReset();
+
+			arr.assign( arrSrc.begin(), arrSrc.end() );
+			vec.assign( vecSrc.begin(), vecSrc.end() );
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+			REQUIRE( EnsureSame( arrSrc, vecSrc ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
 }
 
 TEST_SUITE( "ArrayTest/NonTrival/SpecialConstructors" )
@@ -1738,7 +1825,7 @@ TEST_SUITE( "ArrayTest/NonTrival/CopyMoveContructors" )
 		Array<AType> arrSrc;
 		vector<VType> vecSrc;
 
-		int i = GENERATE( 0, 1, 256 );
+		int i = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
 
 		SUBCASE( "Src Size = " + doctest::toString( i ) ) {
 			for ( int j = 0; j < i; ++j ) {
@@ -1771,7 +1858,7 @@ TEST_SUITE( "ArrayTest/NonTrival/CopyMoveContructors" )
 		Array<AType> arrSrc;
 		vector<VType> vecSrc;
 
-		int i = GENERATE( 0, 1, 256 );
+		int i = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
 
 		SUBCASE( "Src Size = " + doctest::toString( i ) ) {
 			for ( int j = 0; j < i; ++j ) {
@@ -1804,7 +1891,7 @@ TEST_SUITE( "ArrayTest/NonTrival/CopyMoveContructors" )
 		Array<AType> arrSrc;
 		vector<VType> vecSrc;
 
-		int i = GENERATE( 0, 1, 256 );
+		int i = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
 
 		SUBCASE( "Src Size = " + doctest::toString( i ) ) {
 			for ( int j = 0; j < i; ++j ) {
@@ -1837,7 +1924,7 @@ TEST_SUITE( "ArrayTest/NonTrival/CopyMoveContructors" )
 		Array<AType> arrSrc;
 		vector<VType> vecSrc;
 
-		int i = GENERATE( 0, 1, 256 );
+		int i = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
 
 		SUBCASE( "Src Size = " + doctest::toString( i ) ) {
 			for ( int j = 0; j < i; ++j ) {
@@ -1876,8 +1963,8 @@ TEST_SUITE( "ArrayTest/NonTrival/CopyMoveAssignment" )
 		Array<AType> arr;
 		vector<VType> vec;
 
-		int i = GENERATE( 0, 1, 16, 17, 24, 25, 256 );
-		int x = GENERATE( 0, 1, 16, 17, 24, 25, 256 );
+		int i = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
+		int x = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
 
 		SUBCASE( "Src=" + doctest::toString( i ) + " Dst=" + doctest::toString( x ) ) {
 			for ( int j = 0; j < i; ++j ) {
@@ -1923,8 +2010,8 @@ TEST_SUITE( "ArrayTest/NonTrival/CopyMoveAssignment" )
 		Array<AType> arr;
 		vector<VType> vec;
 
-		int i = GENERATE( 0, 1, 16, 17, 24, 25, 256 );
-		int x = GENERATE( 0, 1, 16, 17, 24, 25, 256 );
+		int i = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
+		int x = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
 
 		SUBCASE( "Src=" + doctest::toString( i ) + " Dst=" + doctest::toString( x ) ) {
 			for ( int j = 0; j < i; ++j ) {
@@ -1995,8 +2082,8 @@ TEST_SUITE( "ArrayTest/NonTrival/Swap" )
 		Array<AType> arr;
 		vector<VType> vec;
 
-		int i = GENERATE( 0, 1, 16, 17, 24, 25, 256 );
-		int x = GENERATE( 0, 1, 16, 17, 24, 25, 256 );
+		int i = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
+		int x = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
 
 		SUBCASE( "Src=" + doctest::toString( i ) + " Dst=" + doctest::toString( x ) ) {
 			for ( int j = 0; j < i; ++j ) {
@@ -2043,8 +2130,8 @@ TEST_SUITE( "ArrayTest/NonTrival/Resize" )
 		Array<AType> arr;
 		vector<VType> vec;
 
-		int i = GENERATE( 0, 1, 16, 17, 24, 25, 256 );
-		int x = GENERATE( 0, 1, 16, 17, 24, 25, 256 );
+		int i = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
+		int x = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
 
 		SUBCASE( "Src=" + doctest::toString( i ) + " Dst=" + doctest::toString( x ) ) {
 			AType::sReset();
