@@ -673,7 +673,7 @@ namespace LibEntropy
 		size_type max_size() const noexcept	{ return static_cast<size_type>( std::min( alloc_traits::max_size( get_allocator() ), static_cast<size_t>( std::numeric_limits<size_type>::max() )) ); }
 		size_type capacity() const noexcept { return mCapacity;  }
 
-		void resize( size_type inNewSize )
+		void resize( size_type inNewSize ) // TODO: requires std::is_default_constructible_v<T>
 		{
 			if ( inNewSize < mSize ) {
 				destruct( inNewSize, mSize ); // Destruct tail, if any
@@ -689,9 +689,17 @@ namespace LibEntropy
 					}
 				}
 				else {
-					// TODO: should we zero init? Or is blank init okay?
-					// FIXME
+					std::memset( mData + mSize, 0, ( inNewSize - mSize ) * sizeof( T ) );
 				}
+			}
+
+			mSize = inNewSize;
+		}
+
+		void resize_uninitialized( size_type inNewSize ) requires std::is_trivially_default_constructible_v<T> && std::is_trivially_destructible_v<T>
+		{
+			if ( inNewSize > mCapacity ) {
+				reallocate( sizeof_grow( inNewSize ) );
 			}
 
 			mSize = inNewSize;
@@ -852,6 +860,7 @@ namespace LibEntropy
 		iterator insert( const_iterator inPos, const T &inValue )
 		{
 			assert( &inValue < mData || &inValue >= mData + mSize );
+			//return emplace( inPos, inValue ); <<<<<<<<< Uncomment to match STL alloc count despite not support aliasing
 			
 			assert( inPos >= begin() && inPos <= end() );
 
@@ -892,6 +901,7 @@ namespace LibEntropy
 		iterator insert( const_iterator inPos, T &&inValue )
 		{
 			assert( &inValue < mData || &inValue >= mData + mSize );
+			//return emplace( inPos, std::move( inValue ) ); <<<<<<<<< Uncomment to match STL alloc count despite not support aliasing
 
 			assert( inPos >= begin() && inPos <= end() );
 
