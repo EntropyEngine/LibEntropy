@@ -2936,9 +2936,83 @@ TEST_SUITE( "ArrayTest/NonTrival/Resize" )
 	}
 }
 
-// Reserve
-
 // Shrink to fit
+TEST_SUITE( "ArrayTest/NonTrival/ShrinkToFit" )
+{
+	TEST_CASE_TEMPLATE( "AfterResize", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr;
+		vector<VType> vec;
+
+		int i = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
+
+		SUBCASE( "Src=" + doctest::toString( i ) ) {
+			AType::sReset();
+			VType::sReset();
+
+			if ( T::reserved ) {
+				arr.reserve( i );
+				vec.reserve( i );
+			}
+
+			arr.resize( i, AType( i ) );
+			vec.resize( i, VType( i ) );
+
+			arr.shrink_to_fit();
+			vec.shrink_to_fit();
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+
+	TEST_CASE_TEMPLATE( "AfterEmplace", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr;
+		vector<VType> vec;
+
+		int i = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
+
+		SUBCASE( "Src=" + doctest::toString( i ) ) {
+			AType::sReset();
+			VType::sReset();
+
+			if ( T::reserved ) {
+				arr.reserve( i );
+				vec.reserve( i );
+			}
+
+			for ( int j = 0; j < i; ++j ) {
+				arr.emplace_back( j + 1 );
+				vec.emplace_back( j + 1 );
+			}
+
+			arr.shrink_to_fit();
+			vec.shrink_to_fit();
+
+			CHECK( arr.capacity() == vec.capacity() );
+
+			AV_CHECK();
+			REQUIRE( EnsureSame( arr, vec ) );
+		}
+
+		AType::sReset();
+		VType::sReset();
+	}
+}
+
+// Reserve
 
 // Comparison
 
