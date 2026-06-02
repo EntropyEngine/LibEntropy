@@ -11,6 +11,11 @@ struct SummaryReporter : public doctest::IReporter
 		size_t mCheckFailed = 0;
 		size_t mRequireFailed = 0;
 
+		std::set<size_t> mSubcaseHashes;
+		std::set<size_t> mSubcaseWarnHashes;
+		std::set<size_t> mSubcaseCheckHashes;
+		std::set<size_t> mSubcaseRequireHashes;
+
 		bool FailedAny() const { return mWarnFailed || mCheckFailed || mRequireFailed; }
 	};
 
@@ -23,6 +28,7 @@ struct SummaryReporter : public doctest::IReporter
 	size_t mSubcaseLevel;
 
 	std::unordered_map<std::string, std::unordered_map<std::string, Stats>> mStats;
+	std::unordered_map<std::string, std::vector<std::string>> mTestOrder;
 
 	SummaryReporter( const doctest::ContextOptions &inOptions ) :
 		mOutStream( *inOptions.cout ),
@@ -46,19 +52,36 @@ struct SummaryReporter : public doctest::IReporter
 
 			if ( !anyFailed ) continue;
 
+			const auto &testCaseNames = mTestOrder[suiteName];
+
 			mOutStream << suiteName << std::endl;
-			for ( const auto &[testName, stats] : testCases ) {
+
+
+			for ( const auto &testName : testCaseNames ) {
+				const auto &stats = testCases.at( testName );
 				if ( stats.FailedAny() ) {
-					mOutStream << "  " << testName << std::endl;
+					mOutStream << "  " << testName;
 
-					if ( stats.mWarnFailed )
-						mOutStream << doctest::Color::Yellow << "    warn failed:    " << stats.mWarnFailed << std::endl;
+					if ( stats.mWarnFailed ) {
+						mOutStream << doctest::Color::Yellow;
+						mOutStream << "  " << stats.mWarnFailed << " warns";
+						mOutStream << " (" << stats.mSubcaseWarnHashes.size() << "/" << stats.mSubcaseHashes.size();
+						mOutStream << " subcases)";
+					}
 
-					if ( stats.mCheckFailed )
-						mOutStream << doctest::Color::Red << "    check failed:   " << stats.mCheckFailed << std::endl;
+					if ( stats.mCheckFailed ) {
+						mOutStream << doctest::Color::Red;
+						mOutStream << "  " << stats.mCheckFailed << " checks";
+						mOutStream << " (" << stats.mSubcaseCheckHashes.size() << "/" << stats.mSubcaseHashes.size();
+						mOutStream << " subcases)";
+					}
 
-					if ( stats.mRequireFailed )
-						mOutStream << doctest::Color::BrightRed << "    require failed: " << stats.mRequireFailed << std::endl;
+					if ( stats.mRequireFailed ) {
+						mOutStream << doctest::Color::BrightRed;
+						mOutStream << "  " << stats.mRequireFailed << " requires";
+						mOutStream << " (" << stats.mSubcaseRequireHashes.size() << "/" << stats.mSubcaseHashes.size();
+						mOutStream << " subcases)";
+					}
 
 					mOutStream << doctest::Color::None << std::endl;
 				}
@@ -75,6 +98,7 @@ struct SummaryReporter : public doctest::IReporter
 		mSubcaseLevel = 0;
 
 		mStats[mTestCase->m_test_suite][mTestCase->m_name];
+		mTestOrder[mTestCase->m_test_suite].emplace_back( mTestCase->m_name );
 	}
 
 	void test_case_reenter( const doctest::TestCaseData &inTestCase ) override
@@ -114,15 +138,31 @@ struct SummaryReporter : public doctest::IReporter
 	void log_assert( const doctest::AssertData &inAssert ) override
 	{
 		// TODO: skip success?
-
 		std::lock_guard<std::mutex> lock( mMutex );
+
+		size_t caseHash = 0;
+		for ( size_t i = 0; i < mSubcaseLevel; ++i ) {
+			size_t currHash = std::hash<std::string>{}( mSubcaseStack[i].m_name.c_str() );
+			caseHash = currHash ^ ( caseHash << 1 );
+		}
 
 		auto &currStats = mStats[mTestCase->m_test_suite][mTestCase->m_name];
 
+		currStats.mSubcaseHashes.insert( caseHash );
+
 		if ( inAssert.m_failed ) {
-			if ( inAssert.m_at & doctest::assertType::is_warn ) currStats.mWarnFailed++;
-			if ( inAssert.m_at & doctest::assertType::is_check ) currStats.mCheckFailed++;
-			if ( inAssert.m_at & doctest::assertType::is_require ) currStats.mRequireFailed++;
+			if ( inAssert.m_at & doctest::assertType::is_warn ) {
+				currStats.mWarnFailed++;
+				currStats.mSubcaseWarnHashes.insert( caseHash );
+			}
+			if ( inAssert.m_at & doctest::assertType::is_check ) {
+				currStats.mCheckFailed++;
+				currStats.mSubcaseCheckHashes.insert( caseHash );
+			}
+			if ( inAssert.m_at & doctest::assertType::is_require ) {
+				currStats.mRequireFailed++;
+				currStats.mSubcaseRequireHashes.insert( caseHash );
+			}
 		}
 	}
 
