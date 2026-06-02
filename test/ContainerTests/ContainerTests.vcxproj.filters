@@ -21,6 +21,9 @@
     <ClCompile Include="ArrayTestNonTriv.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ArrayTestJolt.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\..\src\LibEntropy\Container\Array.natvis" />
