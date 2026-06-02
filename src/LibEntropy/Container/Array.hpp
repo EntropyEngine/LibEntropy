@@ -110,6 +110,30 @@ namespace LibEntropy
 			mCapacity = inNewCapacity;
 		}
 
+		/// Reallocates all data into a new block of size inNewCapacity without strengthening during mutation
+		void reallocate_basic( size_type inNewCapacity )
+		{
+			assert( mData );
+			assert( inNewCapacity > 0 && inNewCapacity >= mSize );
+
+			pointer newElements = alloc_traits::allocate( get_allocator(), inNewCapacity );
+
+			if constexpr ( std::is_trivially_copyable_v<T> ) {
+				std::memcpy( newElements, mData, mSize * sizeof( T ) ); // TODO: memmove?
+			}
+
+			// Move only for basic
+			for ( size_type i = 0; i < mSize; ++i ) {
+				alloc_traits::construct( get_allocator(), newElements + i, std::move( mData[i] ) );
+			}
+
+			destruct( 0, mSize );
+			alloc_traits::deallocate( get_allocator(), mData, mCapacity );
+
+			mData = newElements;
+			mCapacity = inNewCapacity;
+		}
+
 		/// Reallocates all data into a new block of size inNewCapacity, creating a gap at inMiddle of inCount
 		/// @note only sets mData and mCapacity; does NOT set new mSize
 		void reallocate_gapped( size_type inNewCapacity, size_type inPos, size_type inCount )
@@ -326,7 +350,7 @@ namespace LibEntropy
 		}
 
 		// Move constructor - with explict allocator override
-		Array( Array &&inRHS, const Allocator &inAllocator ) noexcept : // TODO: type_identity_t? noexcept?? move iterator assignment???
+		Array( Array &&inRHS, const Allocator &inAllocator ) noexcept( alloc_traits::is_always_equal::value ) : // TODO: type_identity_t? noexcept?? move iterator assignment???
 			Allocator( inAllocator )
 		{
 			if ( get_allocator() == inRHS.get_allocator() ) {
@@ -970,7 +994,7 @@ namespace LibEntropy
 
 			// Insert at back after growth
 			else if ( index == mSize ) {
-				grow( inCount );
+				reallocate_basic( sizeof_grow( mSize + inCount ) );
 
 				if constexpr ( std::is_trivially_copyable_v<T> ) {
 					// Single byte type
@@ -1038,7 +1062,7 @@ namespace LibEntropy
 
 			// Insert at back after growth
 			else if ( inIndex == mSize ) {
-				grow( inCount );
+				reallocate_basic( sizeof_grow( mSize + inCount ) );
 				std::memcpy( mData + inIndex, std::to_address( inFirst ), inCount * sizeof( T ) );
 			}
 
@@ -1086,7 +1110,7 @@ namespace LibEntropy
 
 			// Insert at back after growth
 			else if ( inIndex == mSize ) {
-				grow( inCount );
+				reallocate_basic( sizeof_grow( mSize + inCount ) );
 
 				// Must construct each element (only construct as back is uninitialised)
 				for ( size_type i = 0; i < inCount; ++i ) {
