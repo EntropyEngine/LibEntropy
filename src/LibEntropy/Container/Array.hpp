@@ -67,8 +67,10 @@ namespace LibEntropy
 
 			pointer newElements = alloc_traits::allocate( get_allocator(), newCapacity );
 
-			destruct( 0, mSize );
-			alloc_traits::deallocate( get_allocator(), mData, mCapacity );
+			if ( mData ) {
+				destruct( 0, mSize );
+				alloc_traits::deallocate( get_allocator(), mData, mCapacity );
+			}
 
 			mData = newElements;
 			mCapacity = newCapacity;
@@ -81,26 +83,28 @@ namespace LibEntropy
 
 			pointer newElements = alloc_traits::allocate( get_allocator(), inNewCapacity );
 
-			if constexpr ( std::is_trivially_copyable_v<T> ) {
-				std::memcpy( newElements, mData, mSize * sizeof( T ) ); // TODO: memmove?
-			}
-
-			// Move if noexcept OR copying is impossible
-			else if constexpr ( std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T> ) {
-				for ( size_type i = 0; i < mSize; ++i ) {
-					alloc_traits::construct( get_allocator(), newElements + i, std::move( mData[i] ) );
+			if ( mData ) {
+				if constexpr ( std::is_trivially_copyable_v<T> ) {
+					std::memcpy( newElements, mData, mSize * sizeof( T ) ); // TODO: memmove?
 				}
-			}
 
-			// Otherwise copy for strong guarantee
-			else {
-				for ( size_type i = 0; i < mSize; ++i ) {
-					alloc_traits::construct( get_allocator(), newElements + i, mData[i] );
+				// Move if noexcept OR copying is impossible
+				else if constexpr ( std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T> ) {
+					for ( size_type i = 0; i < mSize; ++i ) {
+						alloc_traits::construct( get_allocator(), newElements + i, std::move( mData[i] ) );
+					}
 				}
-			}
 
-			destruct( 0, mSize );
-			alloc_traits::deallocate( get_allocator(), mData, mCapacity );
+				// Otherwise copy for strong guarantee
+				else {
+					for ( size_type i = 0; i < mSize; ++i ) {
+						alloc_traits::construct( get_allocator(), newElements + i, mData[i] );
+					}
+				}
+
+				destruct( 0, mSize );
+				alloc_traits::deallocate( get_allocator(), mData, mCapacity );
+			}
 
 			mData = newElements;
 			mCapacity = inNewCapacity;
@@ -110,6 +114,9 @@ namespace LibEntropy
 		/// @note only sets mData and mCapacity; does NOT set new mSize
 		void reallocate_gapped( size_type inNewCapacity, size_type inPos, size_type inCount )
 		{
+			// Can only be called iff there are existing elements in the array
+			assert( mData );
+
 			// Ensure valid capcity, ensure new capacity can account for all elements + overflow check
 			assert( inNewCapacity > 0 && inNewCapacity >= mSize + inCount );
 
@@ -235,6 +242,7 @@ namespace LibEntropy
 		/// Deallocates mData and sets mCapacity to zero (does not call destructors)
 		void free()
 		{
+			assert( mData );
 			alloc_traits::deallocate( get_allocator(), mData, mCapacity );
 			mData = nullptr;
 			mCapacity = 0;
