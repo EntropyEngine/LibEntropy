@@ -19,6 +19,22 @@ struct SummaryReporter : public doctest::IReporter
 		bool FailedAny() const { return mWarnFailed || mCheckFailed || mRequireFailed; }
 	};
 
+	struct TotalStats
+	{
+		size_t mAssertsFailed = 0;
+		size_t mCasesFailed = 0;
+		size_t mTestsFailed = 0;
+
+		TotalStats &operator += ( const TotalStats &inRHS )
+		{
+			mAssertsFailed += inRHS.mAssertsFailed;
+			mCasesFailed += inRHS.mCasesFailed;
+			mTestsFailed += inRHS.mTestsFailed;
+
+			return *this;
+		}
+	};
+
 	std::ostream &mOutStream;
 	const doctest::ContextOptions &mOptions;
 	const doctest::TestCaseData *mTestCase;
@@ -41,20 +57,71 @@ struct SummaryReporter : public doctest::IReporter
 
 	void test_run_end( const doctest::TestRunStats &inRunStats ) override
 	{
-		mOutStream << "\nSummary\n\n";
+		mOutStream << "\n";
+
+		TotalStats globalWarn, globalCheck, globalRequired;
 
 		for ( const auto &[suiteName, testCases] : mStats ) {
 
+			TotalStats suiteWarn, suiteCheck, suiteRequired;
+
 			bool anyFailed = false;
 			for ( const auto &[testName, stats] : testCases ) {
-				if ( stats.FailedAny() ) anyFailed = true;
+				if ( stats.FailedAny() ) {
+					anyFailed = true;
+
+					if ( stats.mWarnFailed ) {
+						suiteWarn.mAssertsFailed += stats.mWarnFailed;
+						suiteWarn.mCasesFailed += stats.mSubcaseWarnHashes.size();
+						suiteWarn.mTestsFailed++;
+					}
+
+					if ( stats.mCheckFailed ) {
+						suiteCheck.mAssertsFailed += stats.mCheckFailed;
+						suiteCheck.mCasesFailed += stats.mSubcaseCheckHashes.size();
+						suiteCheck.mTestsFailed++;
+					}
+
+					if ( stats.mRequireFailed ) {
+						suiteRequired.mAssertsFailed += stats.mRequireFailed;
+						suiteRequired.mCasesFailed += stats.mSubcaseRequireHashes.size();
+						suiteRequired.mTestsFailed++;
+					}
+				}
 			}
 
 			if ( !anyFailed ) continue;
 
+			globalWarn += suiteWarn;
+			globalCheck += suiteCheck;
+			globalRequired += suiteRequired;
+
 			const auto &testCaseNames = mTestOrder[suiteName];
 
-			mOutStream << suiteName << std::endl;
+			mOutStream << suiteName;
+
+			if ( suiteWarn.mTestsFailed ) {
+				mOutStream << doctest::Color::Yellow << "  Warn: ";
+				mOutStream << suiteWarn.mTestsFailed << " tests, ";
+				mOutStream << suiteWarn.mCasesFailed << " cases, ";
+				mOutStream << suiteWarn.mAssertsFailed << " asserts.";
+			}
+
+			if ( suiteCheck.mTestsFailed ) {
+				mOutStream << doctest::Color::Red << "  Check: ";
+				mOutStream << suiteCheck.mTestsFailed << " tests, ";
+				mOutStream << suiteCheck.mCasesFailed << " cases, ";
+				mOutStream << suiteCheck.mAssertsFailed << " asserts.";
+			}
+
+			if ( suiteRequired.mTestsFailed ) {
+				mOutStream << doctest::Color::BrightRed << "  Required: ";
+				mOutStream << suiteRequired.mTestsFailed << " tests, ";
+				mOutStream << suiteRequired.mCasesFailed << " cases, ";
+				mOutStream << suiteRequired.mAssertsFailed << " asserts.";
+			}
+
+			mOutStream << doctest::Color::None << std::endl;
 
 
 			for ( const auto &testName : testCaseNames ) {
@@ -66,27 +133,54 @@ struct SummaryReporter : public doctest::IReporter
 						mOutStream << doctest::Color::Yellow;
 						mOutStream << "  " << stats.mWarnFailed << " warns";
 						mOutStream << " (" << stats.mSubcaseWarnHashes.size() << "/" << stats.mSubcaseHashes.size();
-						mOutStream << " subcases)";
+						mOutStream << " cases)";
 					}
 
 					if ( stats.mCheckFailed ) {
 						mOutStream << doctest::Color::Red;
 						mOutStream << "  " << stats.mCheckFailed << " checks";
 						mOutStream << " (" << stats.mSubcaseCheckHashes.size() << "/" << stats.mSubcaseHashes.size();
-						mOutStream << " subcases)";
+						mOutStream << " cases)";
 					}
 
 					if ( stats.mRequireFailed ) {
 						mOutStream << doctest::Color::BrightRed;
 						mOutStream << "  " << stats.mRequireFailed << " requires";
 						mOutStream << " (" << stats.mSubcaseRequireHashes.size() << "/" << stats.mSubcaseHashes.size();
-						mOutStream << " subcases)";
+						mOutStream << " cases)";
 					}
 
 					mOutStream << doctest::Color::None << std::endl;
 				}
 			}
 		}
+
+		mOutStream << "\n";
+
+		mOutStream << doctest::Color::BrightWhite << "Summary:";
+
+		if ( globalWarn.mTestsFailed ) {
+			mOutStream << doctest::Color::Yellow << "  Warn: ";
+			mOutStream << globalWarn.mTestsFailed << " tests, ";
+			mOutStream << globalWarn.mCasesFailed << " cases, ";
+			mOutStream << globalWarn.mAssertsFailed << " asserts.";
+		}
+
+		if ( globalCheck.mTestsFailed ) {
+			mOutStream << doctest::Color::Red << "  Check: ";
+			mOutStream << globalCheck.mTestsFailed << " tests, ";
+			mOutStream << globalCheck.mCasesFailed << " cases, ";
+			mOutStream << globalCheck.mAssertsFailed << " asserts.";
+		}
+
+		if ( globalRequired.mTestsFailed ) {
+			mOutStream << doctest::Color::BrightRed << "  Required: ";
+			mOutStream << globalRequired.mTestsFailed << " tests, ";
+			mOutStream << globalRequired.mCasesFailed << " cases, ";
+			mOutStream << globalRequired.mAssertsFailed << " asserts.";
+		}
+
+		mOutStream << doctest::Color::None << std::endl;
 	}
 
 	void test_case_start( const doctest::TestCaseData &inTestCase ) override
