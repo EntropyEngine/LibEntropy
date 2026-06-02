@@ -2211,7 +2211,6 @@ TEST_SUITE( "ArrayTest/NonTrival/Resize" )
 	}
 }
 
-// Shrink to fit
 TEST_SUITE( "ArrayTest/NonTrival/ShrinkToFit" )
 {
 	TEST_CASE_TEMPLATE( "AfterResize", T, ALL_PARAMS )
@@ -2284,6 +2283,57 @@ TEST_SUITE( "ArrayTest/NonTrival/ShrinkToFit" )
 
 		AType::sReset();
 		VType::sReset();
+	}
+}
+
+TEST_SUITE( "ArrayTest/NonTrival/Equality" )
+{
+	TEST_CASE_TEMPLATE( "Equality", T, ALL_PARAMS )
+	{
+		using AType = NonTriv<true, T::no_except>;
+		using VType = NonTriv<false, T::no_except>;
+
+		Array<AType> arr1;
+		vector<VType> vec1;
+
+		Array<AType> arr2;
+		vector<VType> vec2;
+
+		int i = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
+		int x = GENERATE( 0, 1, 16, 17, 23, 24, 25, 256 );
+
+		SUBCASE( "First=" + doctest::toString( i ) + " Second=" + doctest::toString( x ) ) {
+			AType::sReset();
+			VType::sReset();
+
+			if ( T::reserved ) {
+				arr1.reserve( i );
+				vec1.reserve( i );
+
+				arr2.reserve( x );
+				vec2.reserve( x );
+			}
+
+			for ( int j = 0; j < i; ++j ) {
+				arr1.emplace_back( j + 1 );
+				vec1.emplace_back( j + 1 );
+			}
+
+			for ( int y = 0; y < x; ++y ) {
+				arr2.emplace_back( y + 1 );
+				vec2.emplace_back( y + 1 );
+			}
+
+			CHECK( ( arr1 == arr2 ) == ( vec1 == vec2 ) );
+			CHECK( ( arr1 != arr2 ) == ( vec1 != vec2 ) );
+
+			REQUIRE( ( vec1 == vec2 ) == ( i == x ) );
+			REQUIRE( ( vec1 != vec2 ) == ( i != x ) );
+
+			AV_WARN();
+			REQUIRE( EnsureSame( arr1, vec1 ) );
+			REQUIRE( EnsureSame( arr2, vec2 ) );
+		}
 	}
 }
 
